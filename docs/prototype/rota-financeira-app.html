@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rota Financeira</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0F1117;
+    --bg2: #181B24;
+    --bg3: #1E2130;
+    --card: #1E2130;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #F0F2F8;
+    --text2: #8A8FA8;
+    --text3: #555A72;
+    --green: #2ECC8A;
+    --green-bg: rgba(46,204,138,0.12);
+    --green-border: rgba(46,204,138,0.25);
+    --amber: #F5A623;
+    --amber-bg: rgba(245,166,35,0.12);
+    --amber-border: rgba(245,166,35,0.25);
+    --red: #F25C5C;
+    --red-bg: rgba(242,92,92,0.12);
+    --red-border: rgba(242,92,92,0.25);
+    --blue: #4F8EF7;
+    --blue-bg: rgba(79,142,247,0.12);
+    --blue-border: rgba(79,142,247,0.25);
+    --accent: #2ECC8A;
+    --radius: 16px;
+    --radius-sm: 10px;
+    --radius-xs: 7px;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+
+  body {
+    background: #0A0C12;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: var(--font-body);
+    padding: 24px 12px;
+  }
+
+  .phone-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .phone-label {
+    font-family: var(--font-display);
+    font-size: 13px;
+    color: #3A3F55;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .phone {
+    width: 390px;
+    height: 844px;
+    background: var(--bg);
+    border-radius: 50px;
+    border: 1.5px solid rgba(255,255,255,0.1);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 28px 0;
+    flex-shrink: 0;
+  }
+
+  .status-time {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .status-icons {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .screen {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: none;
+    flex-direction: column;
+    scrollbar-width: none;
+    padding-bottom: 90px;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+  .screen.active { display: flex; }
+
+  .screen-header {
+    padding: 14px 22px 0;
+    flex-shrink: 0;
+  }
+
+  .screen-eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+
+  .screen-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .screen-body { padding: 16px 22px 0; flex: 1; }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+    margin-top: 20px;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  /* CARDS */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 10px;
+  }
+
+  .card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* HERO CARD */
+  .hero-card {
+    background: linear-gradient(135deg, #162F25 0%, #1a2d3d 100%);
+    border: 1px solid rgba(46,204,138,0.2);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-card::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 140px; height: 140px;
+    background: radial-gradient(circle, rgba(46,204,138,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+
+  .hero-label { font-size: 11px; color: rgba(46,204,138,0.7); font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+  .hero-value { font-family: var(--font-display); font-size: 38px; font-weight: 700; color: var(--green); line-height: 1; margin-bottom: 4px; }
+  .hero-sub { font-size: 12px; color: var(--text2); }
+
+  /* PROGRESS BAR */
+  .progress-wrap { margin-top: 14px; }
+  .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .progress-title { font-size: 12px; color: var(--text2); }
+  .progress-pct { font-size: 12px; font-weight: 600; color: var(--green); }
+  .progress-bg { background: rgba(255,255,255,0.07); border-radius: 99px; height: 7px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; background: var(--green); transition: width 0.6s cubic-bezier(.4,0,.2,1); }
+  .progress-fill.amber { background: var(--amber); }
+  .progress-fill.blue { background: var(--blue); }
+
+  /* METRIC GRID */
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .metric-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 13px;
+  }
+  .metric-lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
+  .metric-val { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--text); }
+  .metric-val.green { color: var(--green); }
+  .metric-val.red { color: var(--red); }
+  .metric-val.amber { color: var(--amber); }
+  .metric-val.blue { color: var(--blue); }
+  .metric-sub { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+  /* LIST ITEMS */
+  .list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .list-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .list-item:first-child { padding-top: 0; }
+
+  .list-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .list-icon.green { background: var(--green-bg); }
+  .list-icon.amber { background: var(--amber-bg); }
+  .list-icon.blue { background: var(--blue-bg); }
+  .list-icon.red { background: var(--red-bg); }
+
+  .list-info { flex: 1; }
+  .list-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .list-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
+  .list-value { font-family: var(--font-display); font-size: 14px; font-weight: 600; }
+  .list-value.green { color: var(--green); }
+  .list-value.red { color: var(--red); }
+  .list-value.amber { color: var(--amber); }
+
+  /* ALERT BOX */
+  .alert-box {
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .alert-box.green { background: var(--green-bg); border: 1px solid var(--green-border); color: #7FDDAE; }
+  .alert-box.amber { background: var(--amber-bg); border: 1px solid var(--amber-border); color: #F5C97A; }
+  .alert-box.red { background: var(--red-bg); border: 1px solid var(--red-border); color: #F5918C; }
+  .alert-box.blue { background: var(--blue-bg); border: 1px solid var(--blue-border); color: #90B8FA; }
+  .alert-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  /* WEEK BARS */
+  .week-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 5px; margin-top: 10px; }
+  .day-col { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .day-lbl { font-size: 9px; color: var(--text3); text-transform: uppercase; }
+  .day-bar-wrap { width: 100%; height: 54px; display: flex; align-items: flex-end; }
+  .day-bar { width: 100%; border-radius: 4px 4px 0 0; min-height: 3px; transition: height 0.4s; }
+  .day-bar.green { background: var(--green); }
+  .day-bar.amber { background: var(--amber); }
+  .day-bar.empty { background: rgba(255,255,255,0.06); height: 100% !important; border-radius: 4px; }
+  .day-val-lbl { font-size: 9px; color: var(--text3); font-weight: 500; }
+
+  /* BADGE */
+  .badge {
+    display: inline-flex; align-items: center;
+    font-size: 10px; font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 99px;
+  }
+  .badge.green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .badge.amber { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+  .badge.red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+  .badge.blue { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
+
+  /* DISTRIBUTION BAR */
+  .dist-bar { display: flex; height: 8px; border-radius: 99px; overflow: hidden; gap: 2px; margin: 10px 0; }
+  .dist-seg { height: 100%; border-radius: 99px; }
+
+  .dist-legend { display: flex; gap: 12px; }
+  .dist-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
+  .dist-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* PLATFORM TAG */
+  .platform-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--text2);
+    margin-right: 5px; margin-bottom: 5px;
+  }
+  .platform-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* DIVIDER */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+
+  /* ROW STAT */
+  .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { color: var(--text2); }
+  .stat-value { font-weight: 600; color: var(--text); }
+  .stat-value.green { color: var(--green); }
+  .stat-value.red { color: var(--red); }
+  .stat-value.amber { color: var(--amber); }
+  .stat-value.blue { color: var(--blue); }
+
+  /* COFRINHOS */
+  .cofrinho-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cofrinho-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+  }
+  .cof-icon { font-size: 22px; margin-bottom: 8px; }
+  .cof-name { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .cof-val { font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .cof-pct { font-size: 10px; color: var(--text3); margin-top: 3px; }
+
+  /* BOTTOM NAV */
+  .bottom-nav {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 82px;
+    background: rgba(15,17,23,0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 8px 16px;
+    z-index: 100;
+  }
+
+  .nav-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 12px;
+    transition: background 0.15s;
+    border: none; background: transparent;
+    min-width: 52px;
+  }
+  .nav-btn:active { background: rgba(255,255,255,0.05); }
+  .nav-btn svg { width: 22px; height: 22px; stroke: var(--text3); stroke-width: 1.8; fill: none; transition: stroke 0.15s; }
+  .nav-btn span { font-size: 9px; color: var(--text3); font-weight: 500; transition: color 0.15s; letter-spacing: 0.03em; }
+  .nav-btn.active svg { stroke: var(--green); }
+  .nav-btn.active span { color: var(--green); }
+
+  /* CHART PLACEHOLDER */
+  .mini-chart { height: 70px; display: flex; align-items: flex-end; gap: 5px; margin-top: 8px; }
+  .chart-bar { flex: 1; border-radius: 4px 4px 0 0; background: rgba(46,204,138,0.2); transition: height 0.4s; }
+  .chart-bar.accent { background: var(--green); }
+
+  /* SETTINGS ITEM */
+  .setting-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .setting-item:last-child { border-bottom: none; }
+  .setting-left { display: flex; align-items: center; gap: 12px; }
+  .setting-ico { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .setting-name { font-size: 13px; color: var(--text); font-weight: 500; }
+  .setting-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
+  .setting-arrow { color: var(--text3); font-size: 16px; }
+
+  /* TOGGLE */
+  .toggle { width: 38px; height: 22px; background: var(--green); border-radius: 99px; position: relative; cursor: pointer; flex-shrink: 0; }
+  .toggle-off { background: var(--bg3); border: 1px solid var(--border2); }
+  .toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: left 0.2s; }
+  .toggle-off::after { left: 3px; }
+  .toggle:not(.toggle-off)::after { left: 19px; }
+
+  /* AVATAR */
+  .avatar { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--green), #1a9e6a); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 20px; font-weight: 700; color: #0F1117; }
+
+  .text-sm { font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .fw { font-weight: 600; }
+  .mt4 { margin-top: 4px; }
+  .mt8 { margin-top: 8px; }
+  .mt12 { margin-top: 12px; }
+
+  /* NOTIFICATION DOT */
+  .notif-dot { width: 7px; height: 7px; background: var(--red); border-radius: 50%; flex-shrink: 0; }
+
+  /* QUICK ACTION */
+  .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .quick-btn {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 13px;
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .quick-btn:active { border-color: var(--green); }
+  .quick-btn-icon { font-size: 18px; }
+  .quick-btn-text { font-size: 12px; font-weight: 500; color: var(--text); }
+
+  /* CONQUISTA */
+  .conquista-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 13px;
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 8px;
+  }
+  .conquista-icon { font-size: 28px; flex-shrink: 0; }
+  .conquista-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .conquista-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .conquista-badge { margin-left: auto; }
+
+  /* FAB */
+  .fab {
+    position: absolute;
+    bottom: 96px; right: 20px;
+    width: 52px; height: 52px;
+    background: var(--green);
+    border-radius: 50%;
+    border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: #0F1117;
+    box-shadow: 0 4px 20px rgba(46,204,138,0.4);
+    z-index: 90;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .fab:active { transform: scale(0.93); box-shadow: 0 2px 10px rgba(46,204,138,0.3); }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    align-items: flex-end;
+    border-radius: 50px;
+    overflow: hidden;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--bg2);
+    border-radius: 28px 28px 0 0;
+    border-top: 1px solid var(--border2);
+    width: 100%;
+    max-height: 86%;
+    overflow-y: auto;
+    scrollbar-width: none;
+    animation: slideUp 0.3s cubic-bezier(.4,0,.2,1);
+  }
+  .modal::-webkit-scrollbar { display: none; }
+  @keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .modal-handle {
+    width: 36px; height: 4px;
+    background: var(--border2);
+    border-radius: 99px;
+    margin: 12px auto 0;
+  }
+  .modal-step { padding: 16px 22px 28px; }
+  .modal-header { margin-bottom: 20px; display: flex; align-items: flex-start; gap: 10px; }
+  .modal-title { font-family: var(--font-display); font-size: 19px; font-weight: 700; color: var(--text); }
+  .modal-sub { font-size: 13px; color: var(--text3); margin-top: 3px; }
+  .modal-back {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 10px; width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0; color: var(--text2);
+    margin-top: 2px;
+  }
+  .tipo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tipo-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 18px 14px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .tipo-card:active { border-color: var(--green); background: var(--green-bg); }
+  .tipo-emoji { font-size: 28px; }
+  .tipo-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px; }
+  .form-input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 15px; font-family: var(--font-body);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+  }
+  .form-input:focus { border-color: var(--green); }
+  .form-input::placeholder { color: var(--text3); font-size: 14px; }
+  .form-input.with-prefix { padding-left: 38px; }
+  .input-prefix-wrap { position: relative; }
+  .input-prefix {
+    position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+    font-size: 14px; color: var(--text3); font-weight: 500; pointer-events: none;
+  }
+  .form-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .form-row2 .form-group { margin-bottom: 0; }
+  .form-hint { font-size: 11px; color: var(--text3); margin-top: 5px; }
+  .chip-group { display: flex; flex-wrap: wrap; gap: 7px; }
+  .chip {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    padding: 6px 14px;
+    font-size: 12px; font-weight: 500;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip.active { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
+  .btn-confirm {
+    width: 100%;
+    background: var(--green);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font-size: 15px; font-weight: 600;
+    font-family: var(--font-display);
+    color: #0F1117;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    margin-top: 6px;
+  }
+  .btn-confirm:active { opacity: 0.88; transform: scale(0.98); }
+  .btn-secondary {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font-size: 14px; font-weight: 500;
+    font-family: var(--font-body);
+    color: var(--text2);
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.15s;
+  }
+  .btn-secondary:active { background: var(--bg3); }
+  .success-wrap { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 20px 0 8px; }
+  .success-icon { font-size: 52px; margin-bottom: 12px; animation: popIn 0.4s cubic-bezier(.17,.67,.4,1.4); }
+  @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .success-title { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--green); margin-bottom: 6px; }
+  .success-sub { font-size: 13px; color: var(--text2); line-height: 1.5; max-width: 260px; }
+
+</style>
+</head>
+<body>
+
+<div class="phone-wrap">
+  <div class="phone-label">Rota Financeira — Protótipo interativo</div>
+  <div class="phone">
+
+    <!-- STATUS BAR -->
+    <div class="status-bar">
+      <span class="status-time">09:41</span>
+      <div class="status-icons">
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="white"><rect x="0" y="3" width="3" height="9" rx="1"/><rect x="4.5" y="2" width="3" height="10" rx="1"/><rect x="9" y="0" width="3" height="12" rx="1"/><rect x="13.5" y="0" width="2.5" height="12" rx="1" opacity=".3"/></svg>
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="white" stroke-width="1.5"><path d="M8 2C10.8 2 13.3 3.2 15 5.2L13 7C11.8 5.8 10 5 8 5C6 5 4.2 5.8 3 7L1 5.2C2.7 3.2 5.2 2 8 2Z"/><path d="M8 8C9.1 8 10.1 8.4 10.8 9.1L9.4 10.5C9 10.2 8.5 10 8 10C7.5 10 7 10.2 6.6 10.5L5.2 9.1C5.9 8.4 6.9 8 8 8Z"/><circle cx="8" cy="12" r="1" fill="white"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="white" stroke-opacity=".35"/><rect x="2" y="2" width="16" height="8" rx="2" fill="white"/><path d="M23 4.5V7.5C23.8 7.2 24.5 6.7 24.5 6C24.5 5.3 23.8 4.8 23 4.5Z" fill="white" opacity=".4"/></svg>
+      </div>
+    </div>
+
+    <!-- ===== HOME ===== -->
+    <div class="screen active" id="screen-home">
+      <div class="screen-header">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div class="screen-eyebrow">Segunda, 15 jun</div>
+            <div class="screen-title">Boa manhã, Carlos 👋</div>
+          </div>
+          <div style="position:relative;">
+            <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--green),#1a9e6a);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:15px;font-weight:700;color:#0F1117;">C</div>
+            <div class="notif-dot" style="position:absolute;top:0;right:0;border:2px solid var(--bg);"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen-body">
+        <!-- HERO -->
+        <div class="hero-card" style="margin-bottom:10px;">
+          <div class="hero-label">Lucro líquido hoje</div>
+          <div class="hero-value">R$ 223</div>
+          <div class="hero-sub">de R$ 312 bruto · R$ 89 em custos</div>
+          <div class="progress-wrap">
+            <div class="progress-header">
+              <span class="progress-title">Meta do dia: R$ 250</span>
+              <span class="progress-pct">89%</span>
+            </div>
+            <div class="progress-bg"><div class="progress-fill" style="width:89%;"></div></div>
+          </div>
+        </div>
+
+        <!-- QUICK ACTIONS -->
+        <div class="quick-actions">
+          <div class="quick-btn" onclick="goTo('ganhos')">
+            <span class="quick-btn-icon">💵</span>
+            <span class="quick-btn-text">Registrar corrida</span>
+          </div>
+          <div class="quick-btn" onclick="goTo('custos')">
+            <span class="quick-btn-icon">⛽</span>
+            <span class="quick-btn-text">Registrar gasto</span>
+          </div>
+        </div>
+
+        <!-- METRICS -->
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-lbl">Parcela do mês</div>
+            <div class="metric-val blue">74%</div>
+            <div class="metric-sub">R$ 1.840 de R$ 2.500</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-lbl">IR reservado</div>
+            <div class="metric-val amber">R$ 187</div>
+            <div class="metric-sub">de R$ 210 estimado</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-lbl">Semana atual</div>
+            <div class="metric-val green">R$ 1.420</div>
+            <div class="metric-sub">4 de 5 metas batidas</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-lbl">Custo/km hoje</div>
+            <div class="metric-val">R$ 0,52</div>
+            <div class="metric-sub">média: R$ 0,48</div>
+          </div>
+        </div>
+
+        <!-- ALERTS -->
+        <div class="section-label">Alertas de hoje</div>
+        <div class="alert-box green">
+          <span class="alert-icon">🎯</span>
+          <span>Faltam <strong>R$ 27</strong> para bater a meta hoje. Mais 1 ou 2 corridas!</span>
+        </div>
+        <div class="alert-box amber">
+          <span class="alert-icon">📅</span>
+          <span>Parcela do carro vence em <strong>10 dias</strong>. Você está 74% coberto.</span>
+        </div>
+
+        <!-- WEEK -->
+        <div class="section-label">Semana — progresso diário</div>
+        <div class="card" style="padding:14px;">
+          <div class="week-grid">
+            <div class="day-col"><span class="day-lbl">Seg</span><div class="day-bar-wrap"><div class="day-bar green" style="height:100%;"></div></div><span class="day-val-lbl">310</span></div>
+            <div class="day-col"><span class="day-lbl">Ter</span><div class="day-bar-wrap"><div class="day-bar empty"></div></div><span class="day-val-lbl">—</span></div>
+            <div class="day-col"><span class="day-lbl">Qua</span><div class="day-bar-wrap"><div class="day-bar amber" style="height:80%;"></div></div><span class="day-val-lbl">285</span></div>
+            <div class="day-col"><span class="day-lbl">Qui</span><div class="day-bar-wrap"><div class="day-bar green" style="height:100%;"></div></div><span class="day-val-lbl">340</span></div>
+            <div class="day-col"><span class="day-lbl">Sex</span><div class="day-bar-wrap"><div class="day-bar green" style="height:85%;"></div></div><span class="day-val-lbl">290</span></div>
+            <div class="day-col"><span class="day-lbl">Sáb</span><div class="day-bar-wrap"><div class="day-bar green" style="height:70%;"></div></div><span class="day-val-lbl">223</span></div>
+            <div class="day-col"><span class="day-lbl">Dom</span><div class="day-bar-wrap"><div class="day-bar empty"></div></div><span class="day-val-lbl">—</span></div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:12px;">
+            <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;border-radius:2px;background:var(--green);"></div><span style="font-size:10px;color:var(--text3);">Meta batida</span></div>
+            <div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;border-radius:2px;background:var(--amber);"></div><span style="font-size:10px;color:var(--text3);">Abaixo da meta</span></div>
+          </div>
+        </div>
+
+        <!-- PLATFORMS -->
+        <div class="section-label">Plataformas conectadas</div>
+        <div class="card" style="padding:12px 16px;">
+          <div class="list-item" style="padding-top:0;">
+            <div class="list-icon green">🚗</div>
+            <div class="list-info"><div class="list-name">Uber</div><div class="list-sub">Sync há 2 minutos</div></div>
+            <span class="badge green">Ativo</span>
+          </div>
+          <div class="list-item">
+            <div class="list-icon blue">🚕</div>
+            <div class="list-info"><div class="list-name">99</div><div class="list-sub">Sync há 2 minutos</div></div>
+            <span class="badge green">Ativo</span>
+          </div>
+          <div class="list-item" style="padding-bottom:0;">
+            <div class="list-icon amber">🛵</div>
+            <div class="list-info"><div class="list-name">iFood</div><div class="list-sub">Não conectado</div></div>
+            <span class="badge amber">Conectar</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== GANHOS ===== -->
+    <div class="screen" id="screen-ganhos">
+      <div class="screen-header">
+        <div class="screen-eyebrow">Segunda, 15 jun</div>
+        <div class="screen-title">Ganhos</div>
+      </div>
+      <div class="screen-body">
+
+        <div class="hero-card">
+          <div class="hero-label">Total bruto hoje</div>
+          <div class="hero-value">R$ 312</div>
+          <div class="hero-sub">12 corridas · 6h rodando</div>
+        </div>
+
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-lbl">Essa semana</div>
+            <div class="metric-val green">R$ 1.420</div>
+            <div class="metric-sub">bruto acumulado</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-lbl">Esse mês</div>
+            <div class="metric-val">R$ 4.218</div>
+            <div class="metric-sub">de R$ 6.000 esperado</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-lbl">Melhor horário</div>
+            <div class="metric-val amber">18h–21h</div>
+            <div class="metric-sub">R$ 48/h em média</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-lbl">Corridas hoje</div>
+            <div class="metric-val">12</div>
+            <div class="metric-sub">R$ 26 por corrida</div>
+          </div>
+        </div>
+
+        <div class="section-label">Por plataforma — hoje</div>
+        <div class="card" style="padding:12px 16px;">
+          <div class="list-item" style="padding-top:0;">
+            <div class="list-icon green">🚗</div>
+            <div class="list-info"><div class="list-name">Uber</div><div class="list-sub">8 corridas · 4h</div></div>
+            <div class="list-value green">R$ 218</div>
+          </div>
+          <div class="list-item" style="padding-bottom:0;">
+            <div class="list-icon blue">🚕</div>
+            <div class="list-info"><div class="list-name">99</div><div class="list-sub">4 corridas · 2h</div></div>
+            <div class="list-value blue">R$ 94</div>
+          </div>
+        </div>
+
+        <div class="section-label">Últimas corridas</div>
+        <div class="card" style="padding:12px 16px;">
+          <div class="list-item" style="padding-top:0;">
+            <div class="list-icon green">🚗</div>
+            <div class="list-info"><div class="list-name">Uber · Centro → Jardins</div><div class="list-sub">09:12 · 8,2 km</div></div>
+            <div class="list-value green">R$ 32</div>
+          </div>
+          <div class="list-item">
+            <div class="list-icon blue">🚕</div>
+            <div class="list-info"><div class="list-name">99 · Shopping → Hospital</div><div class="list-sub">08:45 · 5,1 km</div></div>
+            <div class="list-value blue">R$ 21</div>
+          </div>
+          <div class="list-item">
+            <div class="list-icon green">🚗</div>
+            <div class="list-info"><div class="list-name">Uber · Aeroporto → Centro</div><div class="list-sub">07:30 · 18,4 km</div></div>
+            <div class="list-value green">R$ 58</div>
+          </div>
+          <div class="list-item" style="padding-bottom:0;">
+            <div class="list-icon green">🚗</div>
+            <div class="list-info"><div class="list-name">Uber · Centro → Bairro</div><div class="list-sub">07:10 · 4,6 km</div></div>
+            <div class="list-value green">R$ 18</div>
+          </div>
+        </div>
+
+        <div class="section-label">Evolução mensal</div>
+        <div class="card" style="padding:14px 16px;">
+          <div class="mini-chart">
+            <div class="chart-bar" style="height:55%;"></div>
+            <div class="chart-bar" style="height:70%;"></div>
+            <div class="chart-bar" style="height:45%;"></div>
+            <div class="chart-bar" style="height:80%;"></div>
+            <div class="chart-bar" style="height:60%;"></div>
+            <div class="chart-bar accent" style="height:90%;"></div>
+            <div class="chart-bar accent" style="height:75%;"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px;">
+            <span style="font-size:10px;color:var(--text3);">Jan</span>
+            <span style="font-size:10px;color:var(--text3);">Fev</span>
+            <span style="font-size:10px;color:var(--text3);">Mar</span>
+            <span style="font-size:10px;color:var(--text3);">Abr</span>
+            <span style="font-size:10px;color:var(--text3);">Mai</span>
+            <span style="font-size:10px;color:var(--green);">Jun</span>
+            <span style="font-size:10px;color:var(--text3);">Jul</span>
+          </div>
+          <hr class="divider">
+          <div class="stat-row"><span class="stat-label">Melhor mês</span><span class="stat-value green">R$ 5.840 (Abr)</span></div>
+          <div class="stat-row"><span class="stat-label">Média mensal</span><span class="stat-value">R$ 4.420</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== CUSTOS ===== -->
+    <div class="screen" id="screen-custos">
+      <div class="screen-header">
+        <div class="screen-eyebrow">Junho 2026</div>
+        <div class="screen-title">Custos</div>
+      </div>
+      <div class="screen-body">
+
+        <div class="hero-card" style="background:linear-gradient(135deg,#2d1818,#2d201a);">
+          <div class="hero-label" style="color:rgba(242,92,92,0.7);">Total de custos — junho</div>
+          <div class="hero-value" style="color:var(--red);">R$ 1.384</div>
+          <div class="hero-sub">de R$ 1.500 estimado</div>
+          <div class="progress-wrap">
+            <div class="progress-header">
+              <span class="progress-title">Custo/km atual</span>
+              <span class="progress-pct" style="color:var(--amber);">R$ 0,52</span>
+            </div>
+            <div class="progress-bg"><div class="progress-fill amber" style="width:72%;"></div></div>
+          </div>
+        </div>
+
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-lbl">Combustível</div>
+            <div class="metric-val red">R$ 980</div>
+            <div class="metric-sub">71% dos custos</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-lbl">Manutenção</div>
+            <div class="metric-val amber">R$ 320</div>
+            <div class="metric-sub">troca de óleo</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-lbl">Km rodados</div>
+            <div class="metric-val">2.660</div>
+            <div class="metric-sub">km esse mês</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-lbl">Lavagens</div>
+            <div class="metric-val">R$ 84</div>
+            <div class="metric-sub">3 lavagens</div>
+          </div>
+        </div>
+
+        <div class="section-label">Abastecimentos recentes</div>
+        <div class="card" style="padding:12px 16px;">
+          <div class="list-item" style="padding-top:0;">
+            <div class="list-icon red">⛽</div>
+            <div class="list-info"><div class="list-name">Posto Ipiranga</div><div class="list-sub">13/06 · 40L · R$ 5,89/L</div></div>
+            <div class="list-value red">-R$ 236</div>
+          </div>
+          <div class="list-item">
+            <div class="list-icon red">⛽</div>
+            <div class="list-info"><div class="list-name">Posto Shell</div><div class="list-sub">10/06 · 35L · R$ 5,75/L</div></div>
+            <div class="list-value red">-R$ 201</div>
+          </div>
+          <div class="list-item" style="padding-bottom:0;">
+            <div class="list-icon red">⛽</div>
+            <div class="list-info"><div class="list-name">Posto BR</div><div class="list-sub">07/06 · 38L · R$ 5,82/L</div></div>
+            <div class="list-value red">-R$ 221</div>
+          </div>
+        </div>
+
+        <div class="section-label">Manutenções</div>
+        <div class="card" style="padding:12px 16px;">
+          <div class="list-item" style="padding-top:0;">
+            <div class="list-icon amber">🔧</div>
+            <div class="list-info"><div class="list-name">Troca de óleo</div><div class="list-sub">05/06 · próxima: 10.000km</div></div>
+            <div class="list-value amber">-R$ 280</div>
+          </div>
+          <div class="list-item" style="padding-bottom:0;">
+            <div class="list-icon amber">🔧</div>
+            <div class="list-info"><div class="list-name">Filtro de ar</div><div class="list-sub">05/06 · substituído</div></div>
+            <div class="list-value amber">-R$ 40</div>
+          </div>
+        </div>
+
+        <div class="section-label">Alertas de custo</div>
+        <div class="alert-box amber">
+          <span class="alert-icon">⚠️</span>
+          <span>Seu custo/km subiu <strong>8%</strong> esse mês. Verifique a calibragem dos pneus.</span>
+        </div>
+        <div class="alert-box blue">
+          <span class="alert-icon">🔔</span>
+          <span>Revisão dos <strong>50.000km</strong> prevista para o próximo mês. Reserve R$ 400.</span>
+        </div>
+      </div>
+
+      <!-- FAB -->
+      <button class="fab" onclick="openModal()" aria-label="Registrar novo gasto">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+
+    <!-- MODAL CADASTRO DE CUSTO -->
+    <div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
+      <div class="modal" id="modal-custo">
+
+        <!-- STEP 1: TIPO -->
+        <div class="modal-step" id="step-tipo">
+          <div class="modal-handle"></div>
+          <div class="modal-header">
+            <div class="modal-title">Registrar gasto</div>
+            <div class="modal-sub">Qual tipo de gasto você quer registrar?</div>
+          </div>
+          <div class="tipo-grid">
+            <div class="tipo-card" onclick="selectTipo('abastecimento','⛽','Abastecimento','red')">
+              <span class="tipo-emoji">⛽</span>
+              <span class="tipo-name">Abastecimento</span>
+            </div>
+            <div class="tipo-card" onclick="selectTipo('manutencao','🔧','Manutenção','amber')">
+              <span class="tipo-emoji">🔧</span>
+              <span class="tipo-name">Manutenção</span>
+            </div>
+            <div class="tipo-card" onclick="selectTipo('lavagem','🚿','Lavagem','blue')">
+              <span class="tipo-emoji">🚿</span>
+              <span class="tipo-name">Lavagem</span>
+            </div>
+            <div class="tipo-card" onclick="selectTipo('outro','📝','Outro gasto','text3')">
+              <span class="tipo-emoji">📝</span>
+              <span class="tipo-name">Outro</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2A: ABASTECIMENTO -->
+        <div class="modal-step" id="step-abastecimento" style="display:none;">
+          <div class="modal-handle"></div>
+          <div class="modal-header">
+            <button class="modal-back" onclick="backToTipo()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+            </button>
+            <div>
+              <div class="modal-title">⛽ Abastecimento</div>
+              <div class="modal-sub">Informe os detalhes do abastecimento</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Posto de combustível</label>
+            <input class="form-input" type="text" placeholder="Ex: Posto Ipiranga, Av. Paulista">
+          </div>
+
+          <div class="form-row2">
+            <div class="form-group">
+              <label class="form-label">Litros abastecidos</label>
+              <input class="form-input" type="number" inputmode="decimal" placeholder="0,0" id="input-litros">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Preço por litro</label>
+              <div class="input-prefix-wrap">
+                <span class="input-prefix">R$</span>
+                <input class="form-input with-prefix" type="number" inputmode="decimal" placeholder="0,00" id="input-preco-litro">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Total pago</label>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">R$</span>
+              <input class="form-input with-prefix" type="number" inputmode="decimal" placeholder="0,00" id="input-total-comb" style="font-size:20px;font-weight:600;color:var(--red);">
+            </div>
+            <div class="form-hint" id="hint-comb" style="display:none;"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Km atual do odômetro</label>
+            <input class="form-input" type="number" inputmode="numeric" placeholder="Ex: 48.500" id="input-km-odo">
+            <div class="form-hint">Usado para calcular seu custo por km</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Data</label>
+            <input class="form-input" type="date" value="2026-06-15">
+          </div>
+
+          <button class="btn-confirm" onclick="showSuccess('Abastecimento registrado!', '⛽ R$ 236 · 40L · R$ 5,89/L — custo/km atualizado para R$ 0,52')">
+            Salvar abastecimento
+          </button>
+        </div>
+
+        <!-- STEP 2B: MANUTENÇÃO -->
+        <div class="modal-step" id="step-manutencao" style="display:none;">
+          <div class="modal-handle"></div>
+          <div class="modal-header">
+            <button class="modal-back" onclick="backToTipo()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+            </button>
+            <div>
+              <div class="modal-title">🔧 Manutenção</div>
+              <div class="modal-sub">Registre o serviço realizado</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Tipo de serviço</label>
+            <div class="chip-group">
+              <div class="chip active" onclick="toggleChip(this)">Troca de óleo</div>
+              <div class="chip" onclick="toggleChip(this)">Pneus</div>
+              <div class="chip" onclick="toggleChip(this)">Freios</div>
+              <div class="chip" onclick="toggleChip(this)">Filtros</div>
+              <div class="chip" onclick="toggleChip(this)">Revisão geral</div>
+              <div class="chip" onclick="toggleChip(this)">Outro</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Descrição (opcional)</label>
+            <input class="form-input" type="text" placeholder="Ex: Troca óleo 5W30 + filtro de óleo">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Valor pago</label>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">R$</span>
+              <input class="form-input with-prefix" type="number" inputmode="decimal" placeholder="0,00" style="font-size:20px;font-weight:600;color:var(--amber);">
+            </div>
+          </div>
+
+          <div class="form-row2">
+            <div class="form-group">
+              <label class="form-label">Km atual</label>
+              <input class="form-input" type="number" inputmode="numeric" placeholder="48.500">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Próxima revisão em</label>
+              <input class="form-input" type="number" inputmode="numeric" placeholder="km ou meses">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Data</label>
+            <input class="form-input" type="date" value="2026-06-15">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" style="margin-bottom:8px;">Criar lembrete de próxima revisão?</label>
+            <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;">
+              <span style="font-size:13px;color:var(--text2);">Aviso automático</span>
+              <div class="toggle" id="toggle-lembrete" onclick="this.classList.toggle('toggle-off')"></div>
+            </div>
+          </div>
+
+          <button class="btn-confirm" onclick="showSuccess('Manutenção registrada!', '🔧 Troca de óleo · R$ 280 · Lembrete criado para 58.000km')">
+            Salvar manutenção
+          </button>
+        </div>
+
+        <!-- STEP 2C: LAVAGEM -->
+        <div class="modal-step" id="step-lavagem" style="display:none;">
+          <div class="modal-handle"></div>
+          <div class="modal-header">
+            <button class="modal-back" onclick="backToTipo()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+            </button>
+            <div>
+              <div class="modal-title">🚿 Lavagem</div>
+              <div class="modal-sub">Registre a lavagem do veículo</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Tipo de lavagem</label>
+            <div class="chip-group">
+              <div class="chip active" onclick="toggleChip(this)">Simples</div>
+              <div class="chip" onclick="toggleChip(this)">Completa</div>
+              <div class="chip" onclick="toggleChip(this)">Polimento</div>
+              <div class="chip" onclick="toggleChip(this)">Higienização</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Valor pago</label>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">R$</span>
+              <input class="form-input with-prefix" type="number" inputmode="decimal" placeholder="0,00" style="font-size:20px;font-weight:600;color:var(--blue);">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Data</label>
+            <input class="form-input" type="date" value="2026-06-15">
+          </div>
+
+          <button class="btn-confirm" onclick="showSuccess('Lavagem registrada!', '🚿 Lavagem simples · R$ 35 · adicionado ao total de custos')">
+            Salvar lavagem
+          </button>
+        </div>
+
+        <!-- STEP 2D: OUTRO -->
+        <div class="modal-step" id="step-outro" style="display:none;">
+          <div class="modal-handle"></div>
+          <div class="modal-header">
+            <button class="modal-back" onclick="backToTipo()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+            </button>
+            <div>
+              <div class="modal-title">📝 Outro gasto</div>
+              <div class="modal-sub">Registre qualquer outro gasto com o carro</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Descrição do gasto</label>
+            <input class="form-input" type="text" placeholder="Ex: IPVA, seguro, multa, estacionamento">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Categoria</label>
+            <div class="chip-group">
+              <div class="chip active" onclick="toggleChip(this)">Seguro</div>
+              <div class="chip" onclick="toggleChip(this)">IPVA</div>
+              <div class="chip" onclick="toggleChip(this)">Multa</div>
+              <div class="chip" onclick="toggleChip(this)">Estacionamento</div>
+              <div class="chip" onclick="toggleChip(this)">Outros</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Valor</label>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">R$</span>
+              <input class="form-input with-prefix" type="number" inputmode="decimal" placeholder="0,00" style="font-size:20px;font-weight:600;">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Data</label>
+            <input class="form-input" type="date" value="2026-06-15">
+          </div>
+
+          <button class="btn-confirm" onclick="showSuccess('Gasto registrado!', '📝 Gasto adicionado ao relatório do mês')">
+            Salvar gasto
+          </button>
+        </div>
+
+        <!-- STEP 3: SUCESSO -->
+        <div class="modal-step" id="step-sucesso" style="display:none;">
+          <div class="success-wrap">
+            <div class="success-icon">✅</div>
+            <div class="success-title" id="success-title">Registrado!</div>
+            <div class="success-sub" id="success-sub"></div>
+            <button class="btn-confirm" style="margin-top:24px;" onclick="closeModal()">Fechar</button>
+            <button class="btn-secondary" onclick="backToTipo()">Registrar outro gasto</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ===== MEU CARRO ===== -->
+    <div class="screen" id="screen-carro">
+      <div class="screen-header">
+        <div class="screen-eyebrow">Financiamento</div>
+        <div class="screen-title">Meu carro</div>
+      </div>
+      <div class="screen-body">
+
+        <div class="card" style="padding:16px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+            <span style="font-size:32px;">🚗</span>
+            <div>
+              <div style="font-family:var(--font-display);font-size:16px;font-weight:600;color:var(--text);">Chevrolet Onix 2024</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:2px;">Move Brasil · Parcela vence dia 25</div>
+            </div>
+          </div>
+          <hr class="divider" style="margin-top:0;">
+          <div class="stat-row"><span class="stat-label">Parcela mensal</span><span class="stat-value blue">R$ 2.500</span></div>
+          <div class="stat-row"><span class="stat-label">Renda desejada/mês</span><span class="stat-value green">R$ 2.000</span></div>
+          <div class="stat-row"><span class="stat-label">Custos estimados/mês</span><span class="stat-value amber">R$ 1.500</span></div>
+          <div class="stat-row"><span class="stat-label">Dias de trabalho/mês</span><span class="stat-value">22 dias</span></div>
+        </div>
+
+        <div class="section-label">Quanto precisa ganhar</div>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-lbl">Meta diária</div>
+            <div class="metric-val blue">R$ 273</div>
+            <div class="metric-sub">para cobrir tudo</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-lbl">Só a parcela</div>
+            <div class="metric-val amber">R$ 114</div>
+            <div class="metric-sub">por dia trabalhado</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-lbl">Só para renda</div>
+            <div class="metric-val green">R$ 91</div>
+            <div class="metric-sub">por dia trabalhado</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-lbl">Total mensal</div>
+            <div class="metric-val">R$ 6.000</div>
+            <div class="metric-sub">necessário bruto</div>
+          </div>
+        </div>
+
+        <div class="section-label">Cada R$ 100 que você ganha</div>
+        <div class="card" style="padding:14px 16px;">
+          <div class="dist-bar">
+            <div class="dist-seg" style="width:42%;background:var(--blue);"></div>
+            <div class="dist-seg" style="width:25%;background:var(--amber);"></div>
+            <div class="dist-seg" style="width:33%;background:var(--green);"></div>
+          </div>
+          <div class="dist-legend">
+            <div class="dist-legend-item"><div class="dist-dot" style="background:var(--blue);"></div>Parcela (42%)</div>
+            <div class="dist-legend-item"><div class="dist-dot" style="background:var(--amber);"></div>Custos (25%)</div>
+            <div class="dist-legend-item"><div class="dist-dot" style="background:var(--green);"></div>Renda (33%)</div>
+          </div>
+          <hr class="divider">
+          <div class="alert-box green" style="margin-bottom:0;">
+            <span class="alert-icon">✅</span>
+            <span>Distribuição saudável. O carro consome 42% da sua renda bruta.</span>
+          </div>
+        </div>
+
+        <div class="section-label">Progresso da parcela — junho</div>
+        <div class="card" style="padding:14px 16px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:13px;color:var(--text2);">Guardado até hoje</span>
+            <span style="font-size:13px;font-weight:600;color:var(--text);">R$ 1.840</span>
+          </div>
+          <div class="progress-bg" style="height:10px;">
+            <div class="progress-fill blue" style="width:74%;background:var(--blue);"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px;">
+            <span style="font-size:11px;color:var(--text3);">74% coberto</span>
+            <span style="font-size:11px;color:var(--red);">Faltam R$ 660</span>
+          </div>
+          <hr class="divider">
+          <div style="font-size:12px;color:var(--text2);line-height:1.6;">
+            Restam <strong style="color:var(--text);">6 dias úteis</strong> até o vencimento. Você precisa de <strong style="color:var(--blue);">R$ 110/dia</strong> só para cobrir a parcela.
+          </div>
+          <hr class="divider">
+          <div class="section-label" style="margin-top:0;">Semana atual</div>
+          <div class="week-grid">
+            <div class="day-col"><span class="day-lbl">Seg</span><div class="day-bar-wrap"><div class="day-bar green" style="height:100%;"></div></div><span class="day-val-lbl">310</span></div>
+            <div class="day-col"><span class="day-lbl">Ter</span><div class="day-bar-wrap"><div class="day-bar empty"></div></div><span class="day-val-lbl">—</span></div>
+            <div class="day-col"><span class="day-lbl">Qua</span><div class="day-bar-wrap"><div class="day-bar amber" style="height:80%;"></div></div><span class="day-val-lbl">285</span></div>
+            <div class="day-col"><span class="day-lbl">Qui</span><div class="day-bar-wrap"><div class="day-bar green" style="height:100%;"></div></div><span class="day-val-lbl">340</span></div>
+            <div class="day-col"><span class="day-lbl">Sex</span><div class="day-bar-wrap"><div class="day-bar green" style="height:85%;"></div></div><span class="day-val-lbl">290</span></div>
+            <div class="day-col"><span class="day-lbl">Sáb</span><div class="day-bar-wrap"><div class="day-bar green" style="height:70%;"></div></div><span class="day-val-lbl">223</span></div>
+            <div class="day-col"><span class="day-lbl">Dom</span><div class="day-bar-wrap"><div class="day-bar empty"></div></div><span class="day-val-lbl">—</span></div>
+          </div>
+        </div>
+
+        <div class="alert-box blue" style="margin-top:4px;">
+          <span class="alert-icon">💡</span>
+          <span>Se rodar <strong>1h a mais</strong> nos próximos 3 dias, você fecha a parcela com <strong>4 dias de sobra</strong>.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== RELATÓRIOS ===== -->
+    <div class="screen" id="screen-relatorios">
+      <div class="screen-header">
+        <div class="screen-eyebrow">Resumo financeiro</div>
+        <div class="screen-title">Relatórios</div>
+      </div>
+      <div class="screen-body">
+
+        <div style="display:flex;gap:6px;margin-bottom:14px;">
+          <div style="flex:1;background:var(--green);border-radius:99px;padding:7px;text-align:center;font-size:12px;font-weight:600;color:#0F1117;">Junho</div>
+          <div style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:7px;text-align:center;font-size:12px;color:var(--text2);">Maio</div>
+          <div style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:7px;text-align:center;font-size:12px;color:var(--text2);">2026</div>
+        </div>
+
+        <div class="hero-card">
+          <div class="hero-label">Lucro líquido — junho</div>
+          <div class="hero-value">R$ 2.834</div>
+          <div class="hero-sub">de R$ 4.218 bruto · R$ 1.384 em custos</div>
+        </div>
+
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-lbl">Ganho bruto</div>
+            <div class="metric-val">R$ 4.218</div>
+            <div class="metric-sub">70% da meta mensal</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-lbl">Lucro real</div>
+            <div class="metric-val green">R$ 2.834</div>
+            <div class="metric-sub">após todos os custos</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-lbl">Parcela paga</div>
+            <div class="metric-val blue">R$ 1.840</div>
+            <div class="metric-sub">74% separado</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-lbl">Renda restante</div>
+            <div class="metric-val green">R$ 994</div>
+            <div class="metric-sub">para você usar</div>
+          </div>
+        </div>
+
+        <div class="section-label">Detalhamento</div>
+        <div class="card" style="padding:12px 16px;">
+          <div class="stat-row"><span class="stat-label">Uber</span><span class="stat-value green">R$ 2.960</span></div>
+          <div class="stat-row"><span class="stat-label">99</span><span class="stat-value blue">R$ 1.258</span></div>
+          <div class="stat-row"><span class="stat-label">Combustível</span><span class="stat-value red">-R$ 980</span></div>
+          <div class="stat-row"><span class="stat-label">Manutenção</span><span class="stat-value amber">-R$ 320</span></div>
+          <div class="stat-row"><span class="stat-label">Lavagens e outros</span><span class="stat-value red">-R$ 84</span></div>
+          <div class="stat-row"><span class="stat-label">IR estimado</span><span class="stat-value amber">-R$ 187</span></div>
+          <div class="stat-row"><span class="stat-label">Parcela do carro</span><span class="stat-value blue">-R$ 1.840</span></div>
+          <hr class="divider">
+          <div class="stat-row" style="border:none;"><span class="stat-label" style="font-weight:600;color:var(--text);">Renda disponível</span><span class="stat-value green" style="font-size:16px;">R$ 994</span></div>
+        </div>
+
+        <div class="section-label">Comparativo — maio vs junho</div>
+        <div class="card" style="padding:12px 16px;">
+          <div class="stat-row"><span class="stat-label">Ganho bruto</span><span class="stat-value">+R$ 318 ↑</span></div>
+          <div class="stat-row"><span class="stat-label">Custos totais</span><span class="stat-value red">+R$ 84 ↑</span></div>
+          <div class="stat-row"><span class="stat-label">Lucro líquido</span><span class="stat-value green">+R$ 234 ↑</span></div>
+          <div class="stat-row"><span class="stat-label">Melhor dia</span><span class="stat-value green">R$ 412 (12/06)</span></div>
+          <div class="stat-row"><span class="stat-label">Custo/km médio</span><span class="stat-value amber">R$ 0,52</span></div>
+        </div>
+
+        <div class="alert-box blue" style="margin-top:4px;">
+          <span class="alert-icon">🤖</span>
+          <span>Com base no seu histórico, julho deve render cerca de <strong>R$ 4.600 bruto</strong> se manter o ritmo atual.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PERFIL ===== -->
+    <div class="screen" id="screen-perfil">
+      <div class="screen-header" style="padding-bottom:14px;">
+        <div class="screen-eyebrow">Configurações</div>
+        <div class="screen-title">Perfil</div>
+      </div>
+      <div class="screen-body" style="padding-top:0;">
+
+        <div class="card" style="padding:16px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div class="avatar">C</div>
+            <div>
+              <div style="font-family:var(--font-display);font-size:17px;font-weight:600;color:var(--text);">Carlos Souza</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:2px;">Motorista de app · 2 anos</div>
+              <span class="badge green" style="margin-top:6px;">Pro ativo</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-label">Meu veículo</div>
+        <div class="card" style="padding:12px 16px;">
+          <div class="stat-row"><span class="stat-label">Modelo</span><span class="stat-value">Chevrolet Onix 2024</span></div>
+          <div class="stat-row"><span class="stat-label">Consumo médio</span><span class="stat-value">12,4 km/L</span></div>
+          <div class="stat-row"><span class="stat-label">Placa</span><span class="stat-value">ABC-1D23</span></div>
+          <div class="stat-row"><span class="stat-label">Km total</span><span class="stat-value">48.320 km</span></div>
+        </div>
+
+        <div class="section-label">Plataformas</div>
+        <div class="card" style="padding:12px 16px;">
+          <div class="setting-item">
+            <div class="setting-left">
+              <div class="setting-ico" style="background:var(--green-bg);">🚗</div>
+              <div><div class="setting-name">Uber</div><div class="setting-sub">Conectado · 3.847 corridas</div></div>
+            </div>
+            <div class="toggle"></div>
+          </div>
+          <div class="setting-item">
+            <div class="setting-left">
+              <div class="setting-ico" style="background:var(--blue-bg);">🚕</div>
+              <div><div class="setting-name">99</div><div class="setting-sub">Conectado · 1.204 corridas</div></div>
+            </div>
+            <div class="toggle"></div>
+          </div>
+          <div class="setting-item" style="border-bottom:none;">
+            <div class="setting-left">
+              <div class="setting-ico" style="background:var(--amber-bg);">🛵</div>
+              <div><div class="setting-name">iFood</div><div class="setting-sub">Não conectado</div></div>
+            </div>
+            <div class="toggle toggle-off"></div>
+          </div>
+        </div>
+
+        <div class="section-label">Preferências</div>
+        <div class="card" style="padding:12px 16px;">
+          <div class="setting-item">
+            <div class="setting-left">
+              <div class="setting-ico" style="background:var(--blue-bg);">🔔</div>
+              <div><div class="setting-name">Notificações</div><div class="setting-sub">Alertas de meta e parcela</div></div>
+            </div>
+            <div class="toggle"></div>
+          </div>
+          <div class="setting-item">
+            <div class="setting-left">
+              <div class="setting-ico" style="background:var(--green-bg);">🌙</div>
+              <div><div class="setting-name">Modo escuro</div><div class="setting-sub">Ativo</div></div>
+            </div>
+            <div class="toggle"></div>
+          </div>
+          <div class="setting-item" style="border-bottom:none;">
+            <div class="setting-left">
+              <div class="setting-ico" style="background:var(--amber-bg);">💬</div>
+              <div><div class="setting-name">Suporte WhatsApp</div><div class="setting-sub">Falar com a equipe</div></div>
+            </div>
+            <span class="setting-arrow">›</span>
+          </div>
+        </div>
+
+        <div class="section-label">Conquistas desbloqueadas</div>
+        <div class="conquista-card">
+          <span class="conquista-icon">🏆</span>
+          <div>
+            <div class="conquista-name">3 meses sem atraso</div>
+            <div class="conquista-sub">Parcela paga em dia · Abr, Mai, Jun</div>
+          </div>
+          <span class="badge green conquista-badge">Desbloqueada</span>
+        </div>
+        <div class="conquista-card">
+          <span class="conquista-icon">🔥</span>
+          <div>
+            <div class="conquista-name">Sequência de 7 dias</div>
+            <div class="conquista-sub">Meta batida 7 dias seguidos</div>
+          </div>
+          <span class="badge green conquista-badge">Desbloqueada</span>
+        </div>
+        <div class="conquista-card" style="opacity:0.5;">
+          <span class="conquista-icon">⭐</span>
+          <div>
+            <div class="conquista-name">R$ 5.000 em um mês</div>
+            <div class="conquista-sub">Falta R$ 782 para desbloquear</div>
+          </div>
+          <span class="badge amber conquista-badge">Em progresso</span>
+        </div>
+
+        <div class="card" style="margin-top:10px;padding:14px;text-align:center;">
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Plano atual</div>
+          <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--green);">Rota Financeira Pro</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">Próxima cobrança: R$ 19,90 em 01/07</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" id="btn-home" onclick="goTo('home')">
+        <svg viewBox="0 0 24 24"><path d="M3 12L12 3l9 9"/><path d="M9 21V12h6v9"/><path d="M3 12v9h18v-9"/></svg>
+        <span>Home</span>
+      </button>
+      <button class="nav-btn" id="btn-ganhos" onclick="goTo('ganhos')">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v1m0 8v1M9.5 9.5C9.5 8.7 10.2 8 11 8h2a1.5 1.5 0 010 3h-2a1.5 1.5 0 000 3h2a1.5 1.5 0 010 3h-2c-.8 0-1.5-.7-1.5-1.5"/></svg>
+        <span>Ganhos</span>
+      </button>
+      <button class="nav-btn" id="btn-custos" onclick="goTo('custos')">
+        <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/><path d="M7 6v12M17 6v12"/></svg>
+        <span>Custos</span>
+      </button>
+      <button class="nav-btn" id="btn-carro" onclick="goTo('carro')">
+        <svg viewBox="0 0 24 24"><path d="M5 17H3v-6l2.5-5h11L19 11v6h-2"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/><path d="M5 11h14"/></svg>
+        <span>Meu carro</span>
+      </button>
+      <button class="nav-btn" id="btn-relatorios" onclick="goTo('relatorios')">
+        <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 4-6"/></svg>
+        <span>Relatórios</span>
+      </button>
+      <button class="nav-btn" id="btn-perfil" onclick="goTo('perfil')">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        <span>Perfil</span>
+      </button>
+    </nav>
+
+  </div>
+</div>
+
+<script>
+
+function openModal() {
+  backToTipo();
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+function selectTipo(tipo, emoji, nome, cor) {
+  document.querySelectorAll('.modal-step').forEach(s => s.style.display = 'none');
+  const step = document.getElementById('step-' + tipo);
+  if (step) step.style.display = 'block';
+}
+function backToTipo() {
+  document.querySelectorAll('.modal-step').forEach(s => s.style.display = 'none');
+  document.getElementById('step-tipo').style.display = 'block';
+}
+function toggleChip(el) {
+  el.closest('.chip-group').querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+function showSuccess(title, sub) {
+  document.querySelectorAll('.modal-step').forEach(s => s.style.display = 'none');
+  document.getElementById('step-sucesso').style.display = 'block';
+  document.getElementById('success-title').textContent = title;
+  document.getElementById('success-sub').textContent = sub;
+}
+
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  document.getElementById('btn-' + id).classList.add('active');
+  document.getElementById('screen-' + id).scrollTop = 0;
+}
+</script>
+</body>
+</html>
