@@ -7,11 +7,15 @@ import {
   lastDayOfMonth,
 } from '../../common/utils/financial-calculations';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AlertsService } from '../alerts/alerts.service';
 import { CreateCostDto } from './dto/create-cost.dto';
 
 @Injectable()
 export class CostsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly alertsService: AlertsService,
+  ) {}
 
   async create(userId: string, dto: CreateCostDto) {
     if (dto.type === CostType.FUEL) {
@@ -59,6 +63,11 @@ export class CostsService {
       },
       include: { fuel_log: true, maintenance: true },
     });
+
+    // F69: check cost/km alert after any fuel registration
+    if (dto.type === CostType.FUEL) {
+      void this.alertsService.checkHighCostPerKm(userId);
+    }
 
     return cost;
   }

@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { IsEnum, IsNumber, IsString, MinLength, validateSync } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, MinLength, validateSync } from 'class-validator';
 
 enum NodeEnv {
   Development = 'development',
@@ -46,6 +46,19 @@ class EnvironmentVariables {
   @IsString()
   @MinLength(32)
   HASH_SECRET!: string;
+
+  // Firebase FCM — optional; push notifications disabled when absent
+  @IsOptional()
+  @IsString()
+  FIREBASE_PROJECT_ID?: string;
+
+  @IsOptional()
+  @IsString()
+  FIREBASE_PRIVATE_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  FIREBASE_CLIENT_EMAIL?: string;
 }
 
 export function validate(config: Record<string, unknown>): EnvironmentVariables {
