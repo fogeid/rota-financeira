@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
 import { SECURE_KEYS } from '../services/api';
+import { secureStorage } from '../utils/secureStorage';
 
 interface User {
   id: string;
@@ -29,30 +29,30 @@ export const useAuthStore = create<AuthState>((set) => ({
   biometryEnabled: false,
 
   setTokens: async (accessToken, refreshToken) => {
-    await SecureStore.setItemAsync(SECURE_KEYS.ACCESS_TOKEN, accessToken);
-    await SecureStore.setItemAsync(SECURE_KEYS.REFRESH_TOKEN, refreshToken);
+    await secureStorage.setItem(SECURE_KEYS.ACCESS_TOKEN, accessToken);
+    await secureStorage.setItem(SECURE_KEYS.REFRESH_TOKEN, refreshToken);
     set({ isAuthenticated: true });
   },
 
   setUser: (user) => set({ user }),
 
   setBiometryEnabled: async (enabled) => {
-    await SecureStore.setItemAsync('rf_biometry_enabled', enabled ? '1' : '0');
+    await secureStorage.setItem('rf_biometry_enabled', enabled ? '1' : '0');
     set({ biometryEnabled: enabled });
   },
 
   logout: async () => {
-    await SecureStore.deleteItemAsync(SECURE_KEYS.ACCESS_TOKEN);
-    await SecureStore.deleteItemAsync(SECURE_KEYS.REFRESH_TOKEN);
-    await SecureStore.deleteItemAsync('rf_biometry_enabled');
+    await secureStorage.deleteItem(SECURE_KEYS.ACCESS_TOKEN);
+    await secureStorage.deleteItem(SECURE_KEYS.REFRESH_TOKEN);
+    await secureStorage.deleteItem('rf_biometry_enabled');
     set({ user: null, isAuthenticated: false, biometryEnabled: false });
   },
 
   initialize: async () => {
     set({ isLoading: true });
     try {
-      const token = await SecureStore.getItemAsync(SECURE_KEYS.ACCESS_TOKEN);
-      const biometry = await SecureStore.getItemAsync('rf_biometry_enabled');
+      const token = await secureStorage.getItem(SECURE_KEYS.ACCESS_TOKEN);
+      const biometry = await secureStorage.getItem('rf_biometry_enabled');
       set({
         isAuthenticated: !!token,
         biometryEnabled: biometry === '1',

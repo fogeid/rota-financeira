@@ -2,30 +2,30 @@ import React, { useEffect } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuthStore } from '../../store/authStore';
-import { colors, typography } from '../../theme';
+import { colors } from '../../theme';
 import type { AuthStackParamList } from '../../navigation/AuthNavigator';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Splash'>;
 
 export function SplashScreen({ navigation }: Props) {
-  const initialize = useAuthStore((s) => s.initialize);
+  const isLoading = useAuthStore((s) => s.isLoading);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   useEffect(() => {
-    initialize().then(() => {
-      // Navigation handled by RootNavigator based on isAuthenticated
-    });
-  }, []);
+    if (!isLoading) {
+      // isAuthenticated === true → RootNavigator already switched to MainNavigator
+      // isAuthenticated === false → navigate to Login within AuthNavigator
+      if (!isAuthenticated) {
+        navigation.replace('Login');
+      }
+    }
+  }, [isLoading, isAuthenticated]);
 
   return (
     <View style={styles.container}>
       <Text style={styles.logo}>Rota</Text>
       <Text style={styles.logoAccent}>Financeira</Text>
-      <ActivityIndicator
-        color={colors.green}
-        size="large"
-        style={styles.spinner}
-      />
+      <ActivityIndicator color={colors.green} size="large" style={styles.spinner} />
     </View>
   );
 }

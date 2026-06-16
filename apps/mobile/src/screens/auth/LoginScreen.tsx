@@ -97,7 +97,7 @@ export function LoginScreen({ navigation }: Props) {
       >
         <View style={styles.header}>
           <Text style={styles.logo}>Rota <Text style={styles.logoAccent}>Financeira</Text></Text>
-          <Text style={styles.subtitle}>Controle financeiro para motoristas</Text>
+          <Text style={styles.subtitle}>O copiloto das suas finanças</Text>
         </View>
 
         {apiError ? (
