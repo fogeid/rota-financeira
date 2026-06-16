@@ -36,6 +36,7 @@ model User {
   earnings          Earning[]
   costs             Cost[]
   goals             Goal[]
+  tax_records       TaxRecord[]
   platform_credentials PlatformCredential[]
   notifications     Notification[]
   otp_codes         OtpCode[]
@@ -363,6 +364,32 @@ model Subscription {
 
   @@index([user_id])
   @@map("subscriptions")
+}
+
+// ─────────────────────────────────────────
+// IMPOSTOS
+// ─────────────────────────────────────────
+
+model TaxRecord {
+  id         String    @id @default(uuid())
+  user_id    String
+  month      DateTime  @db.Date             // Primeiro dia do mês (2026-06-01)
+  status     TaxStatus @default(PENDING)
+  tax_amount Decimal   @db.Decimal(10,2)    // IR calculado para o mês
+  paid_at    DateTime?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, month])
+  @@map("tax_records")
+}
+
+enum TaxStatus {
+  PENDING
+  PAID
+  OVERDUE
 }
 
 enum BillingCycle {
