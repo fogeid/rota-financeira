@@ -13,7 +13,13 @@ import { RedisThrottlerStorage } from './common/throttler/redis-throttler.storag
 import { validate } from './config/env.validation';
 import { LoggerModule } from './config/logger.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CostsModule } from './modules/costs/costs.module';
+import { EarningsModule } from './modules/earnings/earnings.module';
+import { FinancingModule } from './modules/financing/financing.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { TaxesModule } from './modules/taxes/taxes.module';
 import { UsersModule } from './modules/users/users.module';
+import { VehiclesModule } from './modules/vehicles/vehicles.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { REDIS_CLIENT, RedisModule } from './redis/redis.module';
 
@@ -58,6 +64,12 @@ import { REDIS_CLIENT, RedisModule } from './redis/redis.module';
     }),
     AuthModule,
     UsersModule,
+    VehiclesModule,
+    FinancingModule,
+    EarningsModule,
+    CostsModule,
+    ReportsModule,
+    TaxesModule,
   ],
   controllers: [AppController],
   providers: [
