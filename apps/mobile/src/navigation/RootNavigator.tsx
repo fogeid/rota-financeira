@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
 import { AuthNavigator } from './AuthNavigator';
-import { MainNavigator } from './MainNavigator';
+import { MainStack } from './MainStack';
 
 const NAV_THEME = {
   ...DefaultTheme,
@@ -25,7 +25,7 @@ export function RootNavigator() {
   // While initializing SecureStore check, show nothing (SplashScreen handles it)
   return (
     <NavigationContainer theme={NAV_THEME}>
-      {isAuthenticated ? <MainNavigator /> : <AuthNavigator />}
+      {isAuthenticated ? <MainStack /> : <AuthNavigator />}
     </NavigationContainer>
   );
 }

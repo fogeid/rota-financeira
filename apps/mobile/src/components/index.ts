@@ -12,3 +12,4 @@ export { ConfirmButton } from './ConfirmButton';
 export { Badge } from './Badge';
 export { WeekBarChart } from './WeekBarChart';
 export { SkeletonBox, SkeletonHeroCard, SkeletonMetricGrid, SkeletonListItem } from './Skeleton';
+export { PlanGuardSheet, usePlanGuard } from './PlanGuard';
