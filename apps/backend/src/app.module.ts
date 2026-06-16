@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { BullModule } from '@nestjs/bullmq';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import Redis from 'ioredis';
 import { AppController } from './app.controller';
@@ -13,9 +14,12 @@ import { RedisThrottlerStorage } from './common/throttler/redis-throttler.storag
 import { validate } from './config/env.validation';
 import { LoggerModule } from './config/logger.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { AlertsModule } from './modules/alerts/alerts.module';
 import { CostsModule } from './modules/costs/costs.module';
 import { EarningsModule } from './modules/earnings/earnings.module';
 import { FinancingModule } from './modules/financing/financing.module';
+import { IntegrationsModule } from './modules/integrations/integrations.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { TaxesModule } from './modules/taxes/taxes.module';
 import { UsersModule } from './modules/users/users.module';
@@ -30,6 +34,13 @@ import { REDIS_CLIENT, RedisModule } from './redis/redis.module';
     PrismaModule,
     RedisModule,
     CommonModule,
+    // BullMQ — fila de sync de plataformas e engine de alertas
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: { url: config.getOrThrow<string>('REDIS_URL') },
+      }),
+    }),
     // Rate limiting — docs/05-SECURITY.md seção 5:
     // 100 req/min por IP (anônimo) e 300 req/min por usuário autenticado
     ThrottlerModule.forRootAsync({
@@ -70,6 +81,9 @@ import { REDIS_CLIENT, RedisModule } from './redis/redis.module';
     CostsModule,
     ReportsModule,
     TaxesModule,
+    NotificationsModule,
+    AlertsModule,
+    IntegrationsModule,
   ],
   controllers: [AppController],
   providers: [
