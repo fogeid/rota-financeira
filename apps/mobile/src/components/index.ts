@@ -11,3 +11,4 @@ export { FormInput } from './FormInput';
 export { ConfirmButton } from './ConfirmButton';
 export { Badge } from './Badge';
 export { WeekBarChart } from './WeekBarChart';
+export { SkeletonBox, SkeletonHeroCard, SkeletonMetricGrid, SkeletonListItem } from './Skeleton';
