@@ -30,13 +30,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-secure-store',
     'expo-sharing',
     'expo-splash-screen',
-    [
-      'expo-build-properties',
-      {
-        android: { compileSdkVersion: 34, targetSdkVersion: 34, buildToolsVersion: '34.0.0' },
-        ios: { deploymentTarget: '15.1' },
-      },
-    ],
   ],
   extra: {
     apiUrl: process.env.API_URL ?? 'http://localhost:3000',
