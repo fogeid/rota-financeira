@@ -15,17 +15,21 @@ export class EarningsService {
     const limit = dto.limit ?? 20;
     const skip = (page - 1) * limit;
 
+    let dateFilter: { gte?: Date; lte?: Date } | undefined;
+    if (dto.month) {
+      const refDate = new Date(`${dto.month}-01`);
+      dateFilter = { gte: firstDayOfMonth(refDate), lte: lastDayOfMonth(refDate) };
+    } else if (dto.date_from || dto.date_to) {
+      dateFilter = {
+        ...(dto.date_from && { gte: new Date(`${dto.date_from}T00:00:00.000Z`) }),
+        ...(dto.date_to && { lte: new Date(`${dto.date_to}T23:59:59.999Z`) }),
+      };
+    }
+
     const where = {
       user_id: userId,
       ...(dto.platform && { platform: dto.platform }),
-      ...(dto.date_from || dto.date_to
-        ? {
-            earned_at: {
-              ...(dto.date_from && { gte: new Date(dto.date_from) }),
-              ...(dto.date_to && { lte: new Date(dto.date_to) }),
-            },
-          }
-        : {}),
+      ...(dateFilter && { earned_at: dateFilter }),
     };
 
     const [data, total] = await Promise.all([
@@ -39,7 +43,11 @@ export class EarningsService {
     ]);
 
     return {
-      data,
+      data: data.map((e) => ({
+        ...e,
+        amount: Number(e.amount as Decimal),
+        km_driven: e.km_driven != null ? Number(e.km_driven as Decimal) : null,
+      })),
       meta: { page, limit, total, total_pages: Math.ceil(total / limit) },
     };
   }
@@ -64,12 +72,15 @@ export class EarningsService {
     let end: Date;
 
     if (period === 'today') {
-      start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-      end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      // earned_at is stored as UTC midnight, so match the UTC date range
+      const todayStr = now.toISOString().slice(0, 10);
+      start = new Date(`${todayStr}T00:00:00.000Z`);
+      end = new Date(`${todayStr}T23:59:59.999Z`);
     } else if (period === 'week') {
-      start = new Date(now.getTime() - 6 * 86_400_000);
-      start.setHours(0, 0, 0, 0);
-      end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const todayStr = now.toISOString().slice(0, 10);
+      end = new Date(`${todayStr}T23:59:59.999Z`);
+      const sixDaysAgo = new Date(now.getTime() - 6 * 86_400_000);
+      start = new Date(`${sixDaysAgo.toISOString().slice(0, 10)}T00:00:00.000Z`);
     } else {
       const refDate = month ? new Date(`${month}-01`) : now;
       start = firstDayOfMonth(refDate);

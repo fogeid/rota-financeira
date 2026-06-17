@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Platform } from '@prisma/client';
-import { IsDateString, IsEnum, IsInt, IsOptional, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsInt, IsOptional, IsString, Matches, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class ListEarningsDto {
@@ -8,6 +8,12 @@ export class ListEarningsDto {
   @IsOptional()
   @IsEnum(Platform)
   platform?: Platform;
+
+  @ApiPropertyOptional({ example: '2026-06', description: 'Filtrar por mês (YYYY-MM)' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}$/)
+  month?: string;
 
   @ApiPropertyOptional({ example: '2026-06-01' })
   @IsOptional()

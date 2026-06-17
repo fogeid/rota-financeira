@@ -357,8 +357,8 @@ export function HomeScreen() {
                 isLast={i === data.integrations.length - 1}
                 right={
                   <Badge
-                    variant={s.last_sync_status === 'SUCCESS' ? 'green' : s.last_sync_status === 'RUNNING' ? 'blue' : 'red'}
-                    label={s.last_sync_status === 'SUCCESS' ? 'Ativo' : s.last_sync_status === 'RUNNING' ? 'Sync...' : 'Falhou'}
+                    variant={s.last_sync_status === 'SUCCESS' ? 'green' : s.last_sync_status === 'RUNNING' ? 'blue' : s.last_sync_status === 'NEVER' ? 'amber' : 'red'}
+                    label={s.last_sync_status === 'SUCCESS' ? 'Ativo' : s.last_sync_status === 'RUNNING' ? 'Sync...' : s.last_sync_status === 'NEVER' ? 'Aguardando' : 'Falhou'}
                   />
                 }
               />
