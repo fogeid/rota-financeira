@@ -26,6 +26,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'ForgotPassword'>;
 export function ForgotPasswordScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const {
     control,
@@ -36,11 +37,14 @@ export function ForgotPasswordScreen({ navigation }: Props) {
 
   async function onSubmit(data: FormData) {
     setLoading(true);
+    setApiError(null);
     try {
       const phone = `+55${data.phone.replace(/\D/g, '')}`;
       await authService.forgotPassword(phone);
       setSent(true);
       navigation.navigate('OTP', { phone, purpose: 'PASSWORD_RESET' });
+    } catch {
+      setApiError('Número não encontrado ou erro ao enviar SMS. Verifique e tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -63,6 +67,9 @@ export function ForgotPasswordScreen({ navigation }: Props) {
 
         {sent ? (
           <AlertBox variant="green" message="Código enviado! Verifique seu telefone." />
+        ) : null}
+        {apiError ? (
+          <AlertBox variant="red" message={apiError} style={{ marginBottom: 16 }} />
         ) : null}
 
         <Controller

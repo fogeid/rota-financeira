@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  Modal, KeyboardAvoidingView, Platform,
+  Modal, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useForm, Controller } from 'react-hook-form';
@@ -14,6 +14,7 @@ import {
   FormInput, Chip, ConfirmButton, AlertBox,
 } from '../../components';
 import { useEarningsStore } from '../../store/earningsStore';
+import { earningsService } from '../../services/earningsService';
 import { formatCurrency } from '../../utils/formatters';
 import type { EarningItem } from '../../types/api';
 
@@ -83,6 +84,7 @@ export function GanhosScreen() {
   const { items, summary, period, isLoading, error, load, setPeriod, addEarning } = useEarningsStore();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState('UBER');
+  const [monthlyGross, setMonthlyGross] = useState<number | null>(null);
 
   const { control, handleSubmit, reset, formState: { errors } } = useForm<TripForm>({
     resolver: zodResolver(tripSchema),
@@ -91,19 +93,25 @@ export function GanhosScreen() {
 
   useEffect(() => {
     load();
+    earningsService.summary('month').then((s) => setMonthlyGross(s.gross_total)).catch(() => {});
   }, []);
 
   async function onSubmit(data: TripForm) {
     const now = new Date().toISOString();
-    await addEarning({
-      platform: selectedPlatform,
-      amount: parseFloat(data.amount.replace(',', '.')),
-      km_driven: parseFloat((data.km_driven ?? '0').replace(',', '.')) || 0,
-      started_at: now,
-      earned_at: now.slice(0, 10),
-    });
-    reset();
-    setModalVisible(false);
+    try {
+      await addEarning({
+        platform: selectedPlatform,
+        amount: parseFloat(data.amount.replace(',', '.')),
+        km_driven: parseFloat((data.km_driven ?? '0').replace(',', '.')) || 0,
+        started_at: now,
+        earned_at: now.slice(0, 10),
+      });
+      reset();
+      setModalVisible(false);
+      earningsService.summary('month').then((s) => setMonthlyGross(s.gross_total)).catch(() => {});
+    } catch {
+      Alert.alert('Erro', 'Não foi possível registrar a corrida. Tente novamente.');
+    }
   }
 
   return (
@@ -131,7 +139,7 @@ export function GanhosScreen() {
               value={formatCurrency(summary.gross_total * 5)}
               sub="Total estimado"
             />
-            <MetricCard label="Mês" value="R$ 4.218,50" sub="Acumulado" />
+            <MetricCard label="Mês" value={monthlyGross !== null ? formatCurrency(monthlyGross) : '—'} sub="Acumulado" />
             <MetricCard
               label="Melhor horário"
               value={summary.best_hour ? `${summary.best_hour}–${String(parseInt(summary.best_hour) + 1).padStart(2, '0')}h` : '—'}

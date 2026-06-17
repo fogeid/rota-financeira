@@ -711,7 +711,7 @@ export function PerfilScreen() {
   const { user, biometryEnabled, setBiometryEnabled, logout } = useAuthStore();
   const subscriptionInfo = useSubscriptionStore((s) => s.info);
   const loadSubscription = useSubscriptionStore((s) => s.load);
-  const isPro = useSubscriptionStore((s) => s.isPro)();
+  const isPro = useSubscriptionStore((s) => s.isPro());
   const loadFinancing = useFinancingStore((s) => s.load);
 
   const [platforms, setPlatforms] = useState<IntegrationStatus[]>([]);

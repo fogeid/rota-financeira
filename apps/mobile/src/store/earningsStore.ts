@@ -50,9 +50,14 @@ export const useEarningsStore = create<EarningsStore>((set, get) => ({
   },
 
   addEarning: async (data) => {
-    const newItem = await earningsService.create(data);
-    set((s) => ({ items: [newItem, ...s.items] }));
-    get().load();
+    try {
+      const newItem = await earningsService.create(data);
+      set((s) => ({ items: [newItem, ...s.items] }));
+      get().load();
+    } catch (err) {
+      set({ error: 'Erro ao registrar corrida. Tente novamente.' });
+      throw err;
+    }
   },
 
   removeEarning: async (id) => {

@@ -15,7 +15,7 @@ type ReportTab = 'current' | 'previous' | 'annual';
 const TAB_LABELS: Record<ReportTab, string> = {
   current: 'Mês atual',
   previous: 'Mês anterior',
-  annual: '2026',
+  annual: String(new Date().getFullYear()),
 };
 
 function StatRow({ label, value, valueColor, delta }: { label: string; value: string; valueColor?: string; delta?: number }) {
@@ -41,7 +41,7 @@ export function RelatoriosScreen() {
     load();
   }, []);
 
-  const isPro = useSubscriptionStore((s) => s.isPro)();
+  const isPro = useSubscriptionStore((s) => s.isPro());
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>

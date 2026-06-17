@@ -32,9 +32,14 @@ export const useCostsStore = create<CostsStore>((set, get) => ({
   },
 
   addCost: async (data) => {
-    const newItem = await costsService.create(data);
-    set((s) => ({ items: [newItem, ...s.items] }));
-    get().load();
+    try {
+      const newItem = await costsService.create(data);
+      set((s) => ({ items: [newItem, ...s.items] }));
+      get().load();
+    } catch (err) {
+      set({ error: 'Erro ao registrar custo. Tente novamente.' });
+      throw err;
+    }
   },
 
   removeCost: async (id) => {
