@@ -8,9 +8,9 @@ import type { MainStackParamList } from '../../navigation/MainStack';
 
 type Plan = 'monthly' | 'annual';
 
-const PLANS: Record<Plan, { id: 'premium_monthly' | 'premium_annual'; label: string; price: string; sub: string; saving?: string }> = {
-  monthly: { id: 'premium_monthly', label: 'Mensal', price: 'R$ 9,90', sub: 'por mês', },
-  annual:  { id: 'premium_annual',  label: 'Anual',  price: 'R$ 89,00', sub: 'por ano', saving: 'Economize 25%' },
+const PLANS: Record<Plan, { id: 'premium_monthly' | 'premium_yearly'; label: string; price: string; sub: string; saving?: string }> = {
+  monthly: { id: 'premium_monthly',  label: 'Mensal', price: 'R$ 9,90',  sub: 'por mês', },
+  annual:  { id: 'premium_yearly',   label: 'Anual',  price: 'R$ 89,00', sub: 'por ano', saving: 'Economize 25%' },
 };
 
 const FREE_FEATURES = [

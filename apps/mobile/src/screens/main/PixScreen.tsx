@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, spacing, typography, radius } from '../../theme';
 import { AlertBox } from '../../components';
-import { subscriptionsMock } from '../../services/mocks/subscriptions.mock';
+import { subscriptionsService } from '../../services/subscriptionsService';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
 import type { MainStackParamList } from '../../navigation/MainStack';
 
@@ -41,7 +41,7 @@ export function PixScreen({ route, navigation }: Props) {
   async function initPix() {
     setLoading(true);
     try {
-      const data = await subscriptionsMock.subscribePix('premium_annual');
+      const data = await subscriptionsService.subscribePix(planId as 'premium_yearly');
       setPixData(data);
       setLoading(false);
 
@@ -54,7 +54,7 @@ export function PixScreen({ route, navigation }: Props) {
 
       // Poll payment status every 5s
       pollRef.current = setInterval(async () => {
-        const status = await subscriptionsMock.checkPixStatus();
+        const status = await subscriptionsService.checkPixStatus();
         if (status === 'PAID') {
           clearInterval(pollRef.current!);
           clearInterval(timerRef.current!);
