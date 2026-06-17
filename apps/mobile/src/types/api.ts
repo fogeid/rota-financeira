@@ -187,6 +187,28 @@ export interface IntegrationsResponse {
   integrations: IntegrationStatus[];
 }
 
+// ─── Subscriptions ───────────────────────────────────────────────────────────
+
+export type SubscriptionPlan = 'FREE' | 'PRO';
+export type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'EXPIRED';
+export type BillingCycle = 'MONTHLY' | 'YEARLY';
+
+export interface SubscriptionInfo {
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
+  billing_cycle: BillingCycle | null;
+  current_period_end: string | null;
+  amount_cents: number;
+  trial_ends_at: string | null;
+}
+
+export interface PixPaymentResponse {
+  qr_code: string;
+  qr_code_url: string;
+  expires_at: string;
+  amount_cents: number;
+}
+
 // ─── Home (combined) ─────────────────────────────────────────────────────────
 
 export interface WeekDay {
