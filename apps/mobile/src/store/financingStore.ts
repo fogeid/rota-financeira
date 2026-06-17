@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { financingMock } from '../services/mocks/financing.mock';
+import { financingService } from '../services/financingService';
 import type { FinancingData, FinancingProgress } from '../types/api';
 
 interface FinancingStore {
@@ -20,8 +20,8 @@ export const useFinancingStore = create<FinancingStore>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const [data, progress] = await Promise.all([
-        financingMock.getData(),
-        financingMock.getProgress(),
+        financingService.getData(),
+        financingService.getProgress(),
       ]);
       set({ data, progress, isLoading: false });
     } catch {
