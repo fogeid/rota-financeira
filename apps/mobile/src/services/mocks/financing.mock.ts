@@ -8,6 +8,7 @@ export const financingMock = {
       due_day: 25,
       desired_income: 2000.00,
       work_days_per_month: 22,
+      total_installments: 60,
       calculated_daily_goal: 280.00,
       monthly_goal: 6160.00,
     };

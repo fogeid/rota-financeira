@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNumber, Max, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsInt, IsNumber, IsOptional, Max, Min } from 'class-validator';
 
 export class UpsertFinancingDto {
   @ApiProperty({ example: 1200.0, description: 'Parcela mensal em R$' })
@@ -23,4 +23,11 @@ export class UpsertFinancingDto {
   @Min(1)
   @Max(30)
   work_days_per_month!: number;
+
+  @ApiPropertyOptional({ example: 60, description: 'Total de parcelas do financiamento' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(600)
+  total_installments?: number;
 }
