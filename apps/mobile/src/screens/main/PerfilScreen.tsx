@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, Modal,
   TextInput, Alert, ActivityIndicator,
@@ -10,9 +10,17 @@ import { colors, spacing, typography, radius } from '../../theme';
 import { Card, Badge, AlertBox } from '../../components';
 import { useAuthStore } from '../../store/authStore';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
+import { integrationsService } from '../../services/integrationsService';
+import { usersService } from '../../services/usersService';
+import type { IntegrationStatus } from '../../types/api';
 import type { MainStackParamList } from '../../navigation/MainStack';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
+
+const PLATFORM_LABEL: Record<string, string> = {
+  UBER: 'Uber',
+  NOVENTA_E_NOVE: '99',
+};
 
 // ─── Edit Vehicle Modal ────────────────────────────────────────────────────
 function EditVehicleModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -141,14 +149,12 @@ function DeleteAccountModal({ visible, onClose }: { visible: boolean; onClose: (
               <Ionicons name="close" size={22} color={colors.text2} />
             </TouchableOpacity>
           </View>
-
           <AlertBox
             variant="red"
             icon="⚠️"
             message="Esta ação é permanente e irreversível. Todos os seus dados, histórico e assinatura serão excluídos."
             style={{ marginBottom: 16 }}
           />
-
           <Text style={modal.label}>Sua senha atual</Text>
           <TextInput
             style={modal.input}
@@ -158,7 +164,6 @@ function DeleteAccountModal({ visible, onClose }: { visible: boolean; onClose: (
             placeholder="Digite sua senha"
             placeholderTextColor={colors.text3}
           />
-
           <Text style={modal.label}>
             Digite <Text style={{ color: colors.red, fontWeight: '700' }}>{DELETE_CONFIRMATION_TEXT}</Text> para confirmar
           </Text>
@@ -170,7 +175,6 @@ function DeleteAccountModal({ visible, onClose }: { visible: boolean; onClose: (
             placeholderTextColor={colors.text3}
             autoCapitalize="characters"
           />
-
           <TouchableOpacity
             style={[modal.saveBtn, { backgroundColor: colors.red }, !canDelete && { opacity: 0.4 }]}
             onPress={handleDelete}
@@ -180,6 +184,328 @@ function DeleteAccountModal({ visible, onClose }: { visible: boolean; onClose: (
             {deleting
               ? <ActivityIndicator color={colors.bg} size="small" />
               : <Text style={modal.saveBtnText}>Excluir permanentemente</Text>
+            }
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── Connect Platform Modal ────────────────────────────────────────────────
+function ConnectPlatformModal({
+  platform,
+  onClose,
+  onSuccess,
+}: {
+  platform: 'UBER' | 'NOVENTA_E_NOVE' | null;
+  onClose: () => void;
+  onSuccess: (platform: 'UBER' | 'NOVENTA_E_NOVE') => void;
+}) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const label = platform ? PLATFORM_LABEL[platform] : '';
+
+  function handleClose() {
+    setEmail('');
+    setPassword('');
+    setError(null);
+    onClose();
+  }
+
+  async function handleConnect() {
+    if (!platform) return;
+    if (!email.trim() || !password) {
+      setError('Preencha e-mail e senha.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await integrationsService.connect(platform, { email: email.trim(), password });
+      handleClose();
+      onSuccess(platform);
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 400) {
+        setError('E-mail ou senha incorretos.');
+      } else {
+        setError('Sem conexão. Verifique sua internet.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Modal visible={!!platform} transparent animationType="slide" onRequestClose={handleClose}>
+      <View style={modal.overlay}>
+        <View style={modal.sheet}>
+          <View style={modal.header}>
+            <Text style={modal.title}>Conectar {label}</Text>
+            <TouchableOpacity onPress={handleClose}>
+              <Ionicons name="close" size={22} color={colors.text2} />
+            </TouchableOpacity>
+          </View>
+
+          {error && <AlertBox variant="red" message={error} style={{ marginBottom: 8 }} />}
+
+          <Text style={modal.label}>E-mail da conta {label}</Text>
+          <TextInput
+            style={modal.input}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            placeholder="seu@email.com"
+            placeholderTextColor={colors.text3}
+          />
+
+          <Text style={modal.label}>Senha</Text>
+          <TextInput
+            style={modal.input}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            placeholder="Sua senha"
+            placeholderTextColor={colors.text3}
+          />
+
+          <Text style={[typography.small, { color: colors.text3, marginTop: 8, textAlign: 'center' }]}>
+            Suas credenciais são criptografadas e nunca compartilhadas.
+          </Text>
+
+          <TouchableOpacity
+            style={[modal.saveBtn, loading && { opacity: 0.6 }]}
+            onPress={handleConnect}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading
+              ? <ActivityIndicator color={colors.bg} size="small" />
+              : <Text style={modal.saveBtnText}>Conectar</Text>
+            }
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── Edit Profile Modal ────────────────────────────────────────────────────
+function EditProfileModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (visible) {
+      setName(user?.name ?? '');
+      setEmail('');
+      setCurrentPassword('');
+      setError(null);
+    }
+  }, [visible]);
+
+  function handleClose() {
+    setError(null);
+    onClose();
+  }
+
+  async function handleSave() {
+    if (!name.trim() || !currentPassword) {
+      setError('Nome e senha atual são obrigatórios.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const payload: { name: string; email?: string; current_password: string } = {
+        name: name.trim(),
+        current_password: currentPassword,
+      };
+      if (email.trim()) payload.email = email.trim();
+      const updated = await usersService.updateProfile(payload);
+      if (user) setUser({ ...user, name: updated.name });
+      handleClose();
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) setError('Senha incorreta.');
+      else if (status === 409) setError('Este e-mail já está em uso.');
+      else setError('Erro ao salvar. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+      <View style={modal.overlay}>
+        <View style={modal.sheet}>
+          <View style={modal.header}>
+            <Text style={modal.title}>Editar perfil</Text>
+            <TouchableOpacity onPress={handleClose}>
+              <Ionicons name="close" size={22} color={colors.text2} />
+            </TouchableOpacity>
+          </View>
+
+          {error && <AlertBox variant="red" message={error} style={{ marginBottom: 8 }} />}
+
+          <Text style={modal.label}>Nome completo</Text>
+          <TextInput
+            style={modal.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Seu nome"
+            placeholderTextColor={colors.text3}
+          />
+
+          <Text style={modal.label}>Novo e-mail (opcional)</Text>
+          <TextInput
+            style={modal.input}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            placeholder="Deixe em branco para manter o atual"
+            placeholderTextColor={colors.text3}
+          />
+
+          <Text style={modal.label}>Senha atual (obrigatória para confirmar)</Text>
+          <TextInput
+            style={modal.input}
+            value={currentPassword}
+            onChangeText={setCurrentPassword}
+            secureTextEntry
+            placeholder="Sua senha atual"
+            placeholderTextColor={colors.text3}
+          />
+
+          <TouchableOpacity
+            style={[modal.saveBtn, loading && { opacity: 0.6 }]}
+            onPress={handleSave}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading
+              ? <ActivityIndicator color={colors.bg} size="small" />
+              : <Text style={modal.saveBtnText}>Salvar</Text>
+            }
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── Change Password Modal ─────────────────────────────────────────────────
+function ChangePasswordModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const logout = useAuthStore((s) => s.logout);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function handleClose() {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setError(null);
+    onClose();
+  }
+
+  async function handleSave() {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setError('Preencha todos os campos.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Nova senha e confirmação não coincidem.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError('A nova senha deve ter pelo menos 8 caracteres.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await usersService.changePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      handleClose();
+      logout();
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) setError('Senha atual incorreta.');
+      else setError('Erro ao alterar senha. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+      <View style={modal.overlay}>
+        <View style={modal.sheet}>
+          <View style={modal.header}>
+            <Text style={modal.title}>Alterar senha</Text>
+            <TouchableOpacity onPress={handleClose}>
+              <Ionicons name="close" size={22} color={colors.text2} />
+            </TouchableOpacity>
+          </View>
+
+          {error && <AlertBox variant="red" message={error} style={{ marginBottom: 8 }} />}
+
+          <Text style={modal.label}>Senha atual</Text>
+          <TextInput
+            style={modal.input}
+            value={currentPassword}
+            onChangeText={setCurrentPassword}
+            secureTextEntry
+            placeholder="Senha atual"
+            placeholderTextColor={colors.text3}
+          />
+
+          <Text style={modal.label}>Nova senha</Text>
+          <TextInput
+            style={modal.input}
+            value={newPassword}
+            onChangeText={setNewPassword}
+            secureTextEntry
+            placeholder="Mínimo 8 caracteres"
+            placeholderTextColor={colors.text3}
+          />
+
+          <Text style={modal.label}>Confirmar nova senha</Text>
+          <TextInput
+            style={modal.input}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+            placeholder="Repita a nova senha"
+            placeholderTextColor={colors.text3}
+          />
+
+          <TouchableOpacity
+            style={[modal.saveBtn, loading && { opacity: 0.6 }]}
+            onPress={handleSave}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading
+              ? <ActivityIndicator color={colors.bg} size="small" />
+              : <Text style={modal.saveBtnText}>Alterar senha</Text>
             }
           </TouchableOpacity>
         </View>
@@ -234,11 +560,23 @@ export function PerfilScreen() {
   const navigation = useNavigation<NavProp>();
   const { user, biometryEnabled, setBiometryEnabled, logout } = useAuthStore();
   const subscriptionInfo = useSubscriptionStore((s) => s.info);
+  const loadSubscription = useSubscriptionStore((s) => s.load);
   const isPro = useSubscriptionStore((s) => s.isPro)();
 
+  const [platforms, setPlatforms] = useState<IntegrationStatus[]>([]);
+  const [connectPlatform, setConnectPlatform] = useState<'UBER' | 'NOVENTA_E_NOVE' | null>(null);
   const [vehicleModalVisible, setVehicleModalVisible] = useState(false);
   const [financingModalVisible, setFinancingModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [editProfileVisible, setEditProfileVisible] = useState(false);
+  const [changePasswordVisible, setChangePasswordVisible] = useState(false);
+
+  useEffect(() => {
+    loadSubscription();
+    integrationsService.status()
+      .then((res) => setPlatforms(res.integrations))
+      .catch(() => {});
+  }, []);
 
   const trialDaysLeft = user?.trial_ends_at
     ? Math.max(0, Math.ceil((new Date(user.trial_ends_at).getTime() - Date.now()) / 86400000))
@@ -247,6 +585,46 @@ export function PerfilScreen() {
   const renewalDate = subscriptionInfo?.current_period_end
     ? new Date(subscriptionInfo.current_period_end).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
     : null;
+
+  function isConnected(platform: 'UBER' | 'NOVENTA_E_NOVE') {
+    return platforms.find((p) => p.platform === platform)?.is_active ?? false;
+  }
+
+  function handleTogglePlatform(platform: 'UBER' | 'NOVENTA_E_NOVE', value: boolean) {
+    if (value) {
+      setConnectPlatform(platform);
+    } else {
+      Alert.alert(
+        `Desconectar ${PLATFORM_LABEL[platform]}?`,
+        'Seu histórico será mantido.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Desconectar',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await integrationsService.disconnect(platform);
+                setPlatforms((prev) => prev.filter((i) => i.platform !== platform));
+              } catch {
+                Alert.alert('Erro', 'Não foi possível desconectar. Tente novamente.');
+              }
+            },
+          },
+        ],
+      );
+    }
+  }
+
+  function handleConnectSuccess(platform: 'UBER' | 'NOVENTA_E_NOVE') {
+    setPlatforms((prev) => {
+      const existing = prev.find((p) => p.platform === platform);
+      if (existing) {
+        return prev.map((p) => p.platform === platform ? { ...p, is_active: true } : p);
+      }
+      return [...prev, { platform, is_active: true, last_sync_at: null, last_sync_status: null }];
+    });
+  }
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
@@ -349,8 +727,23 @@ export function PerfilScreen() {
       {/* Platforms */}
       <Text style={styles.sectionLabel}>Plataformas</Text>
       <Card>
-        <SettingRow icon="logo-usd" label="Uber" value="Conectado" toggle toggleValue={true} onToggle={() => {}} />
-        <SettingRow icon="logo-usd" label="99" value="Conectado" toggle toggleValue={true} onToggle={() => {}} isLast />
+        <SettingRow
+          icon="logo-usd"
+          label="Uber"
+          value={isConnected('UBER') ? 'Conectado' : 'Não conectado'}
+          toggle
+          toggleValue={isConnected('UBER')}
+          onToggle={(v) => handleTogglePlatform('UBER', v)}
+        />
+        <SettingRow
+          icon="logo-usd"
+          label="99"
+          value={isConnected('NOVENTA_E_NOVE') ? 'Conectado' : 'Não conectado'}
+          toggle
+          toggleValue={isConnected('NOVENTA_E_NOVE')}
+          onToggle={(v) => handleTogglePlatform('NOVENTA_E_NOVE', v)}
+          isLast
+        />
       </Card>
 
       {/* Preferences */}
@@ -370,8 +763,8 @@ export function PerfilScreen() {
       {/* Account */}
       <Text style={styles.sectionLabel}>Conta</Text>
       <Card>
-        <SettingRow icon="person-outline" label="Editar perfil" onPress={() => {}} />
-        <SettingRow icon="lock-closed-outline" label="Alterar senha" onPress={() => {}} />
+        <SettingRow icon="person-outline" label="Editar perfil" onPress={() => setEditProfileVisible(true)} />
+        <SettingRow icon="lock-closed-outline" label="Alterar senha" onPress={() => setChangePasswordVisible(true)} />
         <SettingRow icon="call-outline" label="Alterar telefone" onPress={() => {}} />
         <SettingRow icon="help-circle-outline" label="Suporte via WhatsApp" onPress={() => {}} />
         <SettingRow icon="document-text-outline" label="Termos de uso" onPress={() => {}} />
@@ -400,6 +793,13 @@ export function PerfilScreen() {
       <EditVehicleModal visible={vehicleModalVisible} onClose={() => setVehicleModalVisible(false)} />
       <EditFinancingModal visible={financingModalVisible} onClose={() => setFinancingModalVisible(false)} />
       <DeleteAccountModal visible={deleteModalVisible} onClose={() => setDeleteModalVisible(false)} />
+      <ConnectPlatformModal
+        platform={connectPlatform}
+        onClose={() => setConnectPlatform(null)}
+        onSuccess={handleConnectSuccess}
+      />
+      <EditProfileModal visible={editProfileVisible} onClose={() => setEditProfileVisible(false)} />
+      <ChangePasswordModal visible={changePasswordVisible} onClose={() => setChangePasswordVisible(false)} />
     </ScrollView>
   );
 }
