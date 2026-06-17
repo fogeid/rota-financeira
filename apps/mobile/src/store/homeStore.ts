@@ -46,30 +46,46 @@ export const useHomeStore = create<HomeStore>((set) => ({
     try {
       const thisMonth = new Date().toISOString().slice(0, 7);
 
-      const [financing, progress, todaySummary, weekSummary, costsSummary, integrationsRes, taxMonth, weekEarnings] =
-        await Promise.all([
-          financingService.getData(),
-          financingService.getProgress(),
-          earningsService.summary('today'),
-          earningsService.summary('week'),
-          costsService.summary(),
-          integrationsService.status(),
-          taxesService.monthly(),
-          earningsService.list({ month: thisMonth }),
-        ]);
+      // Promise.allSettled: uma falha parcial não derruba a Home inteira.
+      // Endpoints que retornam 404 (usuário sem dados cadastrados) usam defaults.
+      const [
+        financingRes, progressRes, todaySummaryRes, weekSummaryRes,
+        costsSummaryRes, integrationsRes, taxMonthRes, weekEarningsRes,
+      ] = await Promise.allSettled([
+        financingService.getData(),
+        financingService.getProgress(),
+        earningsService.summary('today'),
+        earningsService.summary('week'),
+        costsService.summary(),
+        integrationsService.status(),
+        taxesService.monthly(),
+        earningsService.list({ month: thisMonth }),
+      ]);
 
+      const financing = financingRes.status === 'fulfilled' ? financingRes.value : null;
+      const progress = progressRes.status === 'fulfilled' ? progressRes.value : null;
+      const todaySummary = todaySummaryRes.status === 'fulfilled' ? todaySummaryRes.value : null;
+      const weekSummary = weekSummaryRes.status === 'fulfilled' ? weekSummaryRes.value : null;
+      const costsSummary = costsSummaryRes.status === 'fulfilled' ? costsSummaryRes.value : null;
+      const integrationsData = integrationsRes.status === 'fulfilled' ? integrationsRes.value : null;
+      const taxMonth = taxMonthRes.status === 'fulfilled' ? taxMonthRes.value : null;
+      const weekEarnings = weekEarningsRes.status === 'fulfilled' ? weekEarningsRes.value : null;
+
+      const dailyGoal = financing?.calculated_daily_goal ?? 0;
       const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-      const daily_net = todaySummary.gross_total - costsSummary.total / daysInMonth;
-      const goal_progress = Math.round((daily_net / financing.calculated_daily_goal) * 100);
+      const grossToday = todaySummary?.gross_total ?? 0;
+      const totalCosts = costsSummary?.total ?? 0;
+      const daily_net = grossToday - totalCosts / daysInMonth;
+      const goal_progress = dailyGoal > 0 ? Math.round((daily_net / dailyGoal) * 100) : 0;
 
       const alerts: HomeData['alerts'] = [];
-      if (goal_progress < 60) {
+      if (dailyGoal > 0 && goal_progress < 60) {
         alerts.push({
           variant: 'amber',
           message: `Você está ${100 - goal_progress}% abaixo da meta de hoje. Ainda dá tempo de recuperar!`,
         });
       }
-      if (progress.days_until_due <= 5 && progress.deficit > 0) {
+      if (progress && progress.days_until_due <= 5 && progress.deficit > 0) {
         alerts.push({
           variant: 'red',
           message: `Parcela vence em ${progress.days_until_due} dias. Faltam R$ ${progress.deficit.toFixed(2).replace('.', ',')} para cobri-la.`,
@@ -79,16 +95,16 @@ export const useHomeStore = create<HomeStore>((set) => ({
       set({
         data: {
           daily_net,
-          daily_goal: financing.calculated_daily_goal,
+          daily_goal: dailyGoal,
           goal_progress: Math.max(0, goal_progress),
-          week_earnings: weekSummary.gross_total,
-          installment: financing.monthly_installment,
-          days_until_due: progress.days_until_due,
-          estimated_tax: taxMonth.tax_amount,
-          cost_per_km: costsSummary.cost_per_km,
-          week_data: buildWeekDays(financing.calculated_daily_goal, weekEarnings.data),
+          week_earnings: weekSummary?.gross_total ?? 0,
+          installment: financing?.monthly_installment ?? 0,
+          days_until_due: progress?.days_until_due ?? 0,
+          estimated_tax: taxMonth?.tax_amount ?? 0,
+          cost_per_km: costsSummary?.cost_per_km ?? 0,
+          week_data: buildWeekDays(dailyGoal, weekEarnings?.data ?? []),
           alerts: alerts.slice(0, 2),
-          integrations: integrationsRes.integrations,
+          integrations: integrationsData?.integrations ?? [],
         },
         isLoading: false,
       });

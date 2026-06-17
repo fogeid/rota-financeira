@@ -7,6 +7,10 @@ export const integrationsService = {
     return data;
   },
 
+  async connect(platform: string, credentials: { email: string; password: string }): Promise<void> {
+    await api.post('/integrations/connect', { platform, credentials });
+  },
+
   async triggerSync(platform: string): Promise<void> {
     await api.post(`/integrations/${platform}/sync`);
   },
