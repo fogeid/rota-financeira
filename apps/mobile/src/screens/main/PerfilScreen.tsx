@@ -287,7 +287,7 @@ export function PerfilScreen() {
             <SettingRow
               icon="star-outline"
               label="Plano Pro ativo"
-              value={subscriptionInfo?.billing_cycle === 'ANNUAL' ? 'Anual' : 'Mensal'}
+              value={subscriptionInfo?.billing_cycle === 'YEARLY' ? 'Anual' : 'Mensal'}
               onPress={() => {}}
             />
             {renewalDate && (

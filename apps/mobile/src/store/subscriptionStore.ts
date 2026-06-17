@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { subscriptionsMock, type SubscriptionInfo } from '../services/mocks/subscriptions.mock';
+import { subscriptionsService } from '../services/subscriptionsService';
+import type { SubscriptionInfo } from '../types/api';
 
 interface SubscriptionStore {
   info: SubscriptionInfo | null;
@@ -17,7 +18,7 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
   load: async () => {
     set({ isLoading: true });
     try {
-      const info = await subscriptionsMock.get();
+      const info = await subscriptionsService.get();
       set({ info, isLoading: false });
     } catch {
       set({ isLoading: false });
@@ -27,13 +28,12 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
   isPro: () => {
     const { info } = get();
     if (!info) return false;
-    if (info.plan === 'PRO' && (info.status === 'ACTIVE' || info.status === 'TRIALING')) return true;
-    return false;
+    return info.plan === 'PRO' && (info.status === 'ACTIVE' || info.status === 'TRIAL');
   },
 
   isTrialing: () => {
     const { info } = get();
-    return info?.status === 'TRIALING' === true;
+    return info?.status === 'TRIAL';
   },
 
   trialDaysLeft: () => {
