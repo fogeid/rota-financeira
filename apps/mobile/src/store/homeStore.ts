@@ -1,18 +1,30 @@
 import { create } from 'zustand';
-import { financingMock } from '../services/mocks/financing.mock';
-import { earningsMock } from '../services/mocks/earnings.mock';
-import { costsMock } from '../services/mocks/costs.mock';
-import { integrationsMock } from '../services/mocks/integrations.mock';
-import type { HomeData } from '../types/api';
+import { financingService } from '../services/financingService';
+import { earningsService } from '../services/earningsService';
+import { costsService } from '../services/costsService';
+import { integrationsService } from '../services/integrationsService';
+import { taxesService } from '../services/taxesService';
+import type { HomeData, EarningItem } from '../types/api';
 
 const DAYS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
-const TODAY_DOW = new Date().getDay();
 
-function buildWeekDays(goal: number) {
-  const MOCK_VALUES = [320, 210, 290, 0, 410, 380, 0];
+function buildWeekDays(goal: number, earnings: EarningItem[]) {
+  const today = new Date();
+  const todayDow = today.getDay();
+  const dayTotals: Record<number, number> = {};
+
+  for (const e of earnings) {
+    const d = new Date(e.earned_at);
+    const diff = Math.floor((today.getTime() - d.getTime()) / 86400000);
+    if (diff >= 0 && diff < 7) {
+      const dow = d.getDay();
+      dayTotals[dow] = (dayTotals[dow] ?? 0) + e.amount;
+    }
+  }
+
   return DAYS.map((day, i) => ({
     day,
-    value: i <= TODAY_DOW ? MOCK_VALUES[i] : 0,
+    value: i <= todayDow ? (dayTotals[i] ?? 0) : 0,
     goal,
   }));
 }
@@ -32,17 +44,22 @@ export const useHomeStore = create<HomeStore>((set) => ({
   load: async () => {
     set({ isLoading: true, error: null });
     try {
-      const [financing, progress, todaySummary, weekSummary, costsSummary, integrationsRes] =
+      const thisMonth = new Date().toISOString().slice(0, 7);
+
+      const [financing, progress, todaySummary, weekSummary, costsSummary, integrationsRes, taxMonth, weekEarnings] =
         await Promise.all([
-          financingMock.getData(),
-          financingMock.getProgress(),
-          earningsMock.summary('today'),
-          earningsMock.summary('week'),
-          costsMock.summary(),
-          integrationsMock.status(),
+          financingService.getData(),
+          financingService.getProgress(),
+          earningsService.summary('today'),
+          earningsService.summary('week'),
+          costsService.summary(),
+          integrationsService.status(),
+          taxesService.monthly(),
+          earningsService.list({ month: thisMonth }),
         ]);
 
-      const daily_net = todaySummary.gross_total - 29.60; // proportional cost mock
+      const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+      const daily_net = todaySummary.gross_total - costsSummary.total / daysInMonth;
       const goal_progress = Math.round((daily_net / financing.calculated_daily_goal) * 100);
 
       const alerts: HomeData['alerts'] = [];
@@ -67,9 +84,9 @@ export const useHomeStore = create<HomeStore>((set) => ({
           week_earnings: weekSummary.gross_total,
           installment: financing.monthly_installment,
           days_until_due: progress.days_until_due,
-          estimated_tax: 187.22,
+          estimated_tax: taxMonth.tax_amount,
           cost_per_km: costsSummary.cost_per_km,
-          week_data: buildWeekDays(financing.calculated_daily_goal),
+          week_data: buildWeekDays(financing.calculated_daily_goal, weekEarnings.data),
           alerts: alerts.slice(0, 2),
           integrations: integrationsRes.integrations,
         },
