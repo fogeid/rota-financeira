@@ -98,7 +98,7 @@ function EditVehicleModal({ visible, onClose, onSaved }: {
             </View>
           </View>
           <Text style={modal.label}>Placa</Text>
-          <TextInput style={modal.input} value={plate} onChangeText={setPlate} autoCapitalize="characters" placeholder="ABC-1D23" placeholderTextColor={colors.text3} />
+          <TextInput style={modal.input} value={plate} onChangeText={setPlate} autoCapitalize="characters" placeholder="ABC-1234" placeholderTextColor={colors.text3} />
           <TouchableOpacity style={modal.saveBtn} onPress={handleSave} disabled={loading} activeOpacity={0.85}>
             {loading ? <ActivityIndicator color={colors.bg} size="small" /> : <Text style={modal.saveBtnText}>Salvar</Text>}
           </TouchableOpacity>
