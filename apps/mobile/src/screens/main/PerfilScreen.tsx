@@ -355,8 +355,11 @@ function ConnectPlatformModal({
       onSuccess(platform);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 400) setError('E-mail ou senha incorretos.');
-      else setError('Sem conexão. Verifique sua internet.');
+      if (status === 400) setError('Dados inválidos. Verifique o e-mail e tente novamente.');
+      else if (status === 409) setError(`${label} já está conectado.`);
+      else if (status === 401) setError('Sessão expirada. Faça login novamente.');
+      else if (!status) setError('Não foi possível conectar ao servidor. Verifique se o backend está rodando e o endereço em EXPO_PUBLIC_API_URL.');
+      else setError(`Erro ${status}. Tente novamente.`);
     } finally {
       setLoading(false);
     }
