@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { taxesMock } from '../services/mocks/taxes.mock';
+import { taxesService } from '../services/taxesService';
 import type { TaxMonth } from '../types/api';
 
 interface TaxesStore {
@@ -21,8 +21,8 @@ export const useTaxesStore = create<TaxesStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const [current, history] = await Promise.all([
-        taxesMock.monthly(),
-        taxesMock.history(),
+        taxesService.monthly(),
+        taxesService.history(),
       ]);
       set({ current, history, isLoading: false });
     } catch {
@@ -31,7 +31,7 @@ export const useTaxesStore = create<TaxesStore>((set, get) => ({
   },
 
   markPaid: async (month) => {
-    const updated = await taxesMock.markPaid(month);
+    const updated = await taxesService.markPaid(month);
     set((s) => ({
       history: s.history.map((t) => (t.month === month ? updated : t)),
       current: s.current?.month === month ? updated : s.current,
