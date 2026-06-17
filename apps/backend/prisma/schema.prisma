@@ -139,6 +139,7 @@ model Financing {
   due_day             Int                           // Dia do vencimento (1–28)
   desired_income      Decimal   @db.Decimal(10,2)  // Renda líquida desejada/mês
   work_days_per_month Int                           // Dias de trabalho por mês (1–30)
+  total_installments  Int?                          // Total de parcelas do financiamento
   created_at          DateTime  @default(now())
   updated_at          DateTime  @updatedAt
 

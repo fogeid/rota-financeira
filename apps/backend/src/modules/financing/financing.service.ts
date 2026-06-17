@@ -29,6 +29,7 @@ export class FinancingService {
         due_day: dto.due_day,
         desired_income: dto.desired_income,
         work_days_per_month: dto.work_days_per_month,
+        total_installments: dto.total_installments ?? null,
       },
     });
 
@@ -59,6 +60,7 @@ export class FinancingService {
         due_day: dto.due_day,
         desired_income: dto.desired_income,
         work_days_per_month: dto.work_days_per_month,
+        total_installments: dto.total_installments ?? null,
       },
     });
 

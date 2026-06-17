@@ -13,6 +13,7 @@ export interface FinancingData {
   due_day: number;
   desired_income: number;
   work_days_per_month: number;
+  total_installments: number | null;
   calculated_daily_goal: number;
   monthly_goal: number;
 }

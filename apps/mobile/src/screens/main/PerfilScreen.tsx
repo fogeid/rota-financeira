@@ -118,6 +118,7 @@ function EditFinancingModal({ visible, onClose, onSaved }: {
   const [dueDay, setDueDay] = useState('');
   const [desiredIncome, setDesiredIncome] = useState('');
   const [workDays, setWorkDays] = useState('');
+  const [totalInstallments, setTotalInstallments] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -130,6 +131,7 @@ function EditFinancingModal({ visible, onClose, onSaved }: {
           setDueDay(String(f.due_day));
           setDesiredIncome(String(f.desired_income).replace('.', ','));
           setWorkDays(String(f.work_days_per_month));
+          setTotalInstallments(f.total_installments != null ? String(f.total_installments) : '');
         }).catch(() => {});
       });
     }
@@ -140,15 +142,23 @@ function EditFinancingModal({ visible, onClose, onSaved }: {
     const due = parseInt(dueDay);
     const income = parseFloat(desiredIncome.replace(',', '.'));
     const days = parseInt(workDays);
+    const total = totalInstallments.trim() ? parseInt(totalInstallments) : null;
     if (isNaN(inst) || inst <= 0) { setError('Parcela inválida.'); return; }
     if (isNaN(due) || due < 1 || due > 28) { setError('Dia de vencimento deve ser entre 1 e 28.'); return; }
     if (isNaN(income) || income < 0) { setError('Renda desejada inválida.'); return; }
     if (isNaN(days) || days < 1 || days > 30) { setError('Dias de trabalho deve ser entre 1 e 30.'); return; }
+    if (total !== null && (isNaN(total) || total < 1 || total > 600)) { setError('Quantidade de parcelas deve ser entre 1 e 600.'); return; }
     setLoading(true);
     setError(null);
     try {
       const { financingService } = await import('../../services/financingService');
-      await financingService.update({ monthly_installment: inst, due_day: due, desired_income: income, work_days_per_month: days });
+      await financingService.update({
+        monthly_installment: inst,
+        due_day: due,
+        desired_income: income,
+        work_days_per_month: days,
+        total_installments: total,
+      });
       onSaved();
       onClose();
     } catch {
@@ -177,10 +187,18 @@ function EditFinancingModal({ visible, onClose, onSaved }: {
               <TextInput style={modal.input} value={dueDay} onChangeText={setDueDay} keyboardType="numeric" placeholder="25" placeholderTextColor={colors.text3} maxLength={2} />
             </View>
           </View>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={modal.label}>Qtd. de parcelas</Text>
+              <TextInput style={modal.input} value={totalInstallments} onChangeText={setTotalInstallments} keyboardType="numeric" placeholder="60" placeholderTextColor={colors.text3} maxLength={3} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={modal.label}>Dias trabalhados/mês</Text>
+              <TextInput style={modal.input} value={workDays} onChangeText={setWorkDays} keyboardType="numeric" placeholder="22" placeholderTextColor={colors.text3} maxLength={2} />
+            </View>
+          </View>
           <Text style={modal.label}>Renda desejada (R$)</Text>
           <TextInput style={modal.input} value={desiredIncome} onChangeText={setDesiredIncome} keyboardType="decimal-pad" placeholder="2.000,00" placeholderTextColor={colors.text3} />
-          <Text style={modal.label}>Dias trabalhados/mês</Text>
-          <TextInput style={modal.input} value={workDays} onChangeText={setWorkDays} keyboardType="numeric" placeholder="22" placeholderTextColor={colors.text3} maxLength={2} />
           <TouchableOpacity style={modal.saveBtn} onPress={handleSave} disabled={loading} activeOpacity={0.85}>
             {loading ? <ActivityIndicator color={colors.bg} size="small" /> : <Text style={modal.saveBtnText}>Salvar</Text>}
           </TouchableOpacity>
