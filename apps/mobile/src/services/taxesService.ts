@@ -4,13 +4,13 @@ import type { TaxMonth, TaxAnnual } from '../types/api';
 export const taxesService = {
   async monthly(month?: string): Promise<TaxMonth> {
     const m = month ?? new Date().toISOString().slice(0, 7);
-    const { data } = await api.get<TaxMonth>('/taxes/monthly', { params: { month: m } });
+    const { data } = await api.get<TaxMonth>(`/taxes/monthly/${m}`);
     return data;
   },
 
   async history(): Promise<TaxMonth[]> {
     const year = new Date().getFullYear();
-    const { data } = await api.get<TaxAnnual>('/taxes/annual', { params: { year } });
+    const { data } = await api.get<TaxAnnual>(`/taxes/annual/${year}`);
     return data.months;
   },
 

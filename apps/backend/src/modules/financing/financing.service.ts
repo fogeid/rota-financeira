@@ -137,9 +137,24 @@ export class FinancingService {
     const requiredDaily =
       deficit > 0 && daysUntilDue > 0 ? roundHalfUp(deficit / daysUntilDue) : 0;
 
-    // Health status: installment as % of monthly goal
-    const monthlyGoal = goal ? Number(goal.monthly_goal as Decimal) : installment;
-    const ratio = monthlyGoal > 0 ? (installment / monthlyGoal) * 100 : 100;
+    // Health status: parcela / ganho_bruto_médio_3_meses (docs/06-BUSINESS-RULES.md §6)
+    const last3Months = await Promise.all(
+      [1, 2, 3].map(async (mBack) => {
+        const refDate = new Date(now.getFullYear(), now.getMonth() - mBack, 1);
+        const agg = await this.prisma.earning.aggregate({
+          where: { user_id: userId, earned_at: { gte: firstDayOfMonth(refDate), lte: lastDayOfMonth(refDate) } },
+          _sum: { amount: true },
+        });
+        return Number((agg._sum.amount as Decimal | null) ?? 0);
+      }),
+    );
+    const monthsWithData = last3Months.filter((v) => v > 0);
+    const avgMonthlyGross =
+      monthsWithData.length > 0
+        ? monthsWithData.reduce((s, v) => s + v, 0) / monthsWithData.length
+        : grossIncome; // < 3 meses de histórico: usa mês atual como estimativa
+
+    const ratio = avgMonthlyGross > 0 ? (installment / avgMonthlyGross) * 100 : 100;
     let healthStatus: 'GREEN' | 'AMBER' | 'RED';
     if (ratio < 40) healthStatus = 'GREEN';
     else if (ratio <= 50) healthStatus = 'AMBER';
