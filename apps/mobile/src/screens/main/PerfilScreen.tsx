@@ -28,6 +28,17 @@ const PLATFORM_LABEL: Record<string, string> = {
   NOVENTA_E_NOVE: '99',
 };
 
+/** Remove separador de milhar, troca vírgula decimal por ponto */
+function parseBRL(s: string): number {
+  return parseFloat(s.replace(/\./g, '').replace(',', '.'));
+}
+
+/** Formata número como "1250,00" para exibição em campo de texto */
+function fmtBRL(n: number | string): string {
+  const num = typeof n === 'string' ? parseFloat(n) : n;
+  return isNaN(num) ? '' : num.toFixed(2).replace('.', ',');
+}
+
 const WHATSAPP_URL = 'https://wa.me/5511999999999?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20o%20Rota%20Financeira';
 
 // ─── Edit Vehicle Modal ────────────────────────────────────────────────────
@@ -57,7 +68,7 @@ function EditVehicleModal({ visible, onClose, onSaved }: {
 
   async function handleSave() {
     const yearNum = parseInt(year);
-    const consumptionNum = parseFloat(consumption.replace(',', '.'));
+    const consumptionNum = parseBRL(consumption);
     if (!model.trim() || !plate.trim()) { setError('Modelo e placa são obrigatórios.'); return; }
     if (isNaN(yearNum) || yearNum < 1990 || yearNum > 2027) { setError('Ano inválido (1990–2027).'); return; }
     if (isNaN(consumptionNum) || consumptionNum < 4 || consumptionNum > 30) { setError('Consumo inválido (4–30 km/L).'); return; }
@@ -127,9 +138,9 @@ function EditFinancingModal({ visible, onClose, onSaved }: {
       setError(null);
       import('../../services/financingService').then(({ financingService }) => {
         financingService.getData().then((f) => {
-          setInstallment(String(f.monthly_installment).replace('.', ','));
+          setInstallment(fmtBRL(f.monthly_installment));
           setDueDay(String(f.due_day));
-          setDesiredIncome(String(f.desired_income).replace('.', ','));
+          setDesiredIncome(fmtBRL(f.desired_income));
           setWorkDays(String(f.work_days_per_month));
           setTotalInstallments(f.total_installments != null ? String(f.total_installments) : '');
         }).catch(() => {});
@@ -138,9 +149,9 @@ function EditFinancingModal({ visible, onClose, onSaved }: {
   }, [visible]);
 
   async function handleSave() {
-    const inst = parseFloat(installment.replace(',', '.'));
+    const inst = parseBRL(installment);
     const due = parseInt(dueDay);
-    const income = parseFloat(desiredIncome.replace(',', '.'));
+    const income = parseBRL(desiredIncome);
     const days = parseInt(workDays);
     const total = totalInstallments.trim() ? parseInt(totalInstallments) : null;
     if (isNaN(inst) || inst <= 0) { setError('Parcela inválida.'); return; }
@@ -180,7 +191,7 @@ function EditFinancingModal({ visible, onClose, onSaved }: {
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <View style={{ flex: 1 }}>
               <Text style={modal.label}>Parcela mensal (R$)</Text>
-              <TextInput style={modal.input} value={installment} onChangeText={setInstallment} keyboardType="decimal-pad" placeholder="1.250,00" placeholderTextColor={colors.text3} />
+              <TextInput style={modal.input} value={installment} onChangeText={setInstallment} keyboardType="decimal-pad" placeholder="1250,00" placeholderTextColor={colors.text3} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={modal.label}>Vencimento (dia)</Text>
@@ -198,7 +209,7 @@ function EditFinancingModal({ visible, onClose, onSaved }: {
             </View>
           </View>
           <Text style={modal.label}>Renda desejada (R$)</Text>
-          <TextInput style={modal.input} value={desiredIncome} onChangeText={setDesiredIncome} keyboardType="decimal-pad" placeholder="2.000,00" placeholderTextColor={colors.text3} />
+          <TextInput style={modal.input} value={desiredIncome} onChangeText={setDesiredIncome} keyboardType="decimal-pad" placeholder="2000,00" placeholderTextColor={colors.text3} />
           <TouchableOpacity style={modal.saveBtn} onPress={handleSave} disabled={loading} activeOpacity={0.85}>
             {loading ? <ActivityIndicator color={colors.bg} size="small" /> : <Text style={modal.saveBtnText}>Salvar</Text>}
           </TouchableOpacity>
