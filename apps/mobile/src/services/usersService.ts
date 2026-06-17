@@ -28,4 +28,12 @@ export const usersService = {
   async deleteAccount(payload: { password: string; confirmation: string }): Promise<void> {
     await api.delete('/users/me', { data: payload });
   },
+
+  async changePhone(payload: { new_phone: string; current_password: string }): Promise<void> {
+    await api.post('/users/me/change-phone', payload);
+  },
+
+  async changePhoneVerify(payload: { new_phone: string; code: string }): Promise<void> {
+    await api.post('/users/me/change-phone/verify', payload);
+  },
 };

@@ -64,7 +64,7 @@ function EditVehicleModal({ visible, onClose, onSaved }: {
     setLoading(true);
     setError(null);
     try {
-      const updated = await vehiclesService.updateVehicle({
+      const updated = await vehiclesService.upsertVehicle({
         model: model.trim(), year: yearNum, plate: plate.trim().toUpperCase(), fuel_efficiency: consumptionNum,
       });
       onSaved(updated);
@@ -500,6 +500,122 @@ function ChangePasswordModal({ visible, onClose }: { visible: boolean; onClose: 
   );
 }
 
+// ─── Change Phone Modal ────────────────────────────────────────────────────
+function ChangePhoneModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const [step, setStep] = useState<1 | 2>(1);
+  const [newPhone, setNewPhone] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function handleClose() {
+    setStep(1); setNewPhone(''); setCurrentPassword(''); setOtp(''); setError(null);
+    onClose();
+  }
+
+  async function handleSendCode() {
+    const digits = newPhone.replace(/\D/g, '');
+    if (digits.length < 10 || digits.length > 11) { setError('Número inválido. Use DDD + número (ex: 11988887777).'); return; }
+    if (!currentPassword) { setError('Informe sua senha atual.'); return; }
+    setLoading(true);
+    setError(null);
+    const formattedPhone = `+55${digits}`;
+    try {
+      await usersService.changePhone({ new_phone: formattedPhone, current_password: currentPassword });
+      setStep(2);
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) setError('Senha incorreta.');
+      else if (status === 409) setError('Este número já está em uso.');
+      else setError('Erro ao enviar código. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVerify() {
+    if (otp.length !== 6) { setError('O código deve ter 6 dígitos.'); return; }
+    setLoading(true);
+    setError(null);
+    const formattedPhone = `+55${newPhone.replace(/\D/g, '')}`;
+    try {
+      await usersService.changePhoneVerify({ new_phone: formattedPhone, code: otp });
+      Alert.alert('Pronto!', 'Telefone atualizado com sucesso.');
+      handleClose();
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 400) setError('Código inválido ou expirado.');
+      else setError('Erro ao verificar código. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+      <View style={modal.overlay}>
+        <View style={modal.sheet}>
+          <View style={modal.header}>
+            <Text style={modal.title}>
+              {step === 1 ? 'Alterar telefone' : 'Confirmar código'}
+            </Text>
+            <TouchableOpacity onPress={handleClose}><Ionicons name="close" size={22} color={colors.text2} /></TouchableOpacity>
+          </View>
+          {error && <AlertBox variant="red" message={error} style={{ marginBottom: 8 }} />}
+          {step === 1 ? (
+            <>
+              <Text style={modal.label}>Novo número (DDD + número)</Text>
+              <TextInput
+                style={modal.input}
+                value={newPhone}
+                onChangeText={setNewPhone}
+                keyboardType="phone-pad"
+                placeholder="11988887777"
+                placeholderTextColor={colors.text3}
+                maxLength={11}
+              />
+              <Text style={modal.label}>Senha atual</Text>
+              <TextInput
+                style={modal.input}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                secureTextEntry
+                placeholder="Sua senha atual"
+                placeholderTextColor={colors.text3}
+              />
+              <TouchableOpacity style={[modal.saveBtn, loading && { opacity: 0.6 }]} onPress={handleSendCode} disabled={loading} activeOpacity={0.85}>
+                {loading ? <ActivityIndicator color={colors.bg} size="small" /> : <Text style={modal.saveBtnText}>Enviar código SMS</Text>}
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={[modal.label, { marginTop: 0 }]}>
+                Código enviado para +55{newPhone.replace(/\D/g, '')}
+              </Text>
+              <TextInput
+                style={[modal.input, { letterSpacing: 8, fontSize: 20, textAlign: 'center' }]}
+                value={otp}
+                onChangeText={setOtp}
+                keyboardType="number-pad"
+                placeholder="000000"
+                placeholderTextColor={colors.text3}
+                maxLength={6}
+              />
+              <TouchableOpacity style={[modal.saveBtn, loading && { opacity: 0.6 }]} onPress={handleVerify} disabled={loading} activeOpacity={0.85}>
+                {loading ? <ActivityIndicator color={colors.bg} size="small" /> : <Text style={modal.saveBtnText}>Confirmar</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setStep(1)} style={{ marginTop: 12, alignItems: 'center' }}>
+                <Text style={[modal.label, { color: colors.green, marginTop: 0 }]}>Trocar número</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // ─── Setting Row ───────────────────────────────────────────────────────────
 function SettingRow({
   icon, label, value, onPress, toggle, toggleValue, onToggle, isLast, destructive,
@@ -560,6 +676,7 @@ export function PerfilScreen() {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [editProfileVisible, setEditProfileVisible] = useState(false);
   const [changePasswordVisible, setChangePasswordVisible] = useState(false);
+  const [changePhoneVisible, setChangePhoneVisible] = useState(false);
 
   useEffect(() => {
     loadSubscription();
@@ -793,7 +910,7 @@ export function PerfilScreen() {
       <Card>
         <SettingRow icon="person-outline" label="Editar perfil" onPress={() => setEditProfileVisible(true)} />
         <SettingRow icon="lock-closed-outline" label="Alterar senha" onPress={() => setChangePasswordVisible(true)} />
-        <SettingRow icon="call-outline" label="Alterar telefone" onPress={() => {}} />
+        <SettingRow icon="call-outline" label="Alterar telefone" onPress={() => setChangePhoneVisible(true)} />
         <SettingRow icon="help-circle-outline" label="Suporte via WhatsApp" onPress={handleSupport} />
         <SettingRow icon="document-text-outline" label="Termos de uso" onPress={() => {}} />
         <SettingRow icon="shield-outline" label="Política de privacidade" onPress={() => {}} isLast />
@@ -830,6 +947,7 @@ export function PerfilScreen() {
       />
       <EditProfileModal visible={editProfileVisible} onClose={() => setEditProfileVisible(false)} />
       <ChangePasswordModal visible={changePasswordVisible} onClose={() => setChangePasswordVisible(false)} />
+      <ChangePhoneModal visible={changePhoneVisible} onClose={() => setChangePhoneVisible(false)} />
     </ScrollView>
   );
 }

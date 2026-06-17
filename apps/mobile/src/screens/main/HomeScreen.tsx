@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useForm, Controller } from 'react-hook-form';
@@ -54,7 +54,7 @@ const tripSchema = z.object({
 type TripForm = z.infer<typeof tripSchema>;
 
 function RegisterEarningModal({ visible, onClose, onSuccess }: {
-  visible: boolean; onClose: () => void; onSuccess: () => void;
+  visible: boolean; onClose: () => void; onSuccess: (amount: number) => void;
 }) {
   const addEarning = useEarningsStore((s) => s.addEarning);
   const [platform, setPlatform] = useState('UBER');
@@ -72,16 +72,17 @@ function RegisterEarningModal({ visible, onClose, onSuccess }: {
     setSubmitting(true);
     setApiError(null);
     const now = new Date().toISOString();
+    const amount = parseFloat(data.amount.replace(',', '.'));
     try {
       await addEarning({
         platform,
-        amount: parseFloat(data.amount.replace(',', '.')),
+        amount,
         km_driven: parseFloat((data.km_driven ?? '0').replace(',', '.')) || 0,
         started_at: now,
         earned_at: now.slice(0, 10),
       });
       reset();
-      onSuccess();
+      onSuccess(amount);
     } catch {
       setApiError('Erro ao registrar corrida. Tente novamente.');
     } finally {
@@ -158,7 +159,7 @@ const costSchema = z.object({
 type CostForm = z.infer<typeof costSchema>;
 
 function RegisterCostModal({ visible, onClose, onSuccess }: {
-  visible: boolean; onClose: () => void; onSuccess: () => void;
+  visible: boolean; onClose: () => void; onSuccess: (amount: number) => void;
 }) {
   const addCost = useCostsStore((s) => s.addCost);
   const [costType, setCostType] = useState<CostType>('FUEL');
@@ -175,15 +176,16 @@ function RegisterCostModal({ visible, onClose, onSuccess }: {
   async function onSubmit(data: CostForm) {
     setSubmitting(true);
     setApiError(null);
+    const amount = parseFloat(data.amount.replace(',', '.'));
     try {
       await addCost({
         type: costType,
-        amount: parseFloat(data.amount.replace(',', '.')),
+        amount,
         description: data.description?.trim() || undefined,
         cost_date: new Date().toISOString().slice(0, 10),
       });
       reset();
-      onSuccess();
+      onSuccess(amount);
     } catch {
       setApiError('Erro ao registrar gasto. Tente novamente.');
     } finally {
@@ -255,14 +257,18 @@ export function HomeScreen() {
     load();
   }, []);
 
-  function handleEarningSuccess() {
+  function handleEarningSuccess(amount: number) {
     setEarningModalVisible(false);
     load();
+    const fmt = amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    Alert.alert('Corrida registrada!', `R$ ${fmt} adicionados ao seu dia.`);
   }
 
-  function handleCostSuccess() {
+  function handleCostSuccess(amount: number) {
     setCostModalVisible(false);
     load();
+    const fmt = amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    Alert.alert('Gasto registrado!', `R$ ${fmt} debitados.`);
   }
 
   return (
