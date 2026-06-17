@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { reportsMock } from '../services/mocks/reports.mock';
+import { reportsService } from '../services/reportsService';
 import type { MonthlyReport } from '../types/api';
 
 type ReportTab = 'current' | 'previous' | 'annual';
@@ -34,7 +34,7 @@ export const useReportsStore = create<ReportsStore>((set, get) => ({
   load: async (month) => {
     set({ isLoading: true, error: null });
     try {
-      const report = await reportsMock.monthly(month);
+      const report = await reportsService.monthly(month);
       set({ report, isLoading: false });
     } catch {
       set({ error: 'Erro ao carregar relatório.', isLoading: false });
