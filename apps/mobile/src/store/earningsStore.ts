@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { earningsMock } from '../services/mocks/earnings.mock';
+import { earningsService } from '../services/earningsService';
 import type { EarningItem, EarningsSummary } from '../types/api';
 
 type Period = 'today' | 'week' | 'month';
@@ -40,8 +40,8 @@ export const useEarningsStore = create<EarningsStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const [listRes, summaryRes] = await Promise.all([
-        earningsMock.list(periodToDate(p)),
-        earningsMock.summary(p),
+        earningsService.list(periodToDate(p)),
+        earningsService.summary(p),
       ]);
       set({ items: listRes.data, summary: summaryRes, isLoading: false });
     } catch {
@@ -50,13 +50,13 @@ export const useEarningsStore = create<EarningsStore>((set, get) => ({
   },
 
   addEarning: async (data) => {
-    const newItem = await earningsMock.create(data);
+    const newItem = await earningsService.create(data);
     set((s) => ({ items: [newItem, ...s.items] }));
     get().load();
   },
 
   removeEarning: async (id) => {
-    await earningsMock.remove(id);
+    await earningsService.remove(id);
     set((s) => ({ items: s.items.filter((e) => e.id !== id) }));
   },
 }));
