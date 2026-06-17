@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, Modal,
   TextInput, Alert, ActivityIndicator, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography, radius } from '../../theme';
 import { Card, Badge, AlertBox } from '../../components';
@@ -355,11 +355,19 @@ function ConnectPlatformModal({
       onSuccess(platform);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 400) setError('Dados inválidos. Verifique o e-mail e tente novamente.');
-      else if (status === 409) setError(`${label} já está conectado.`);
-      else if (status === 401) setError('Sessão expirada. Faça login novamente.');
-      else if (!status) setError('Não foi possível conectar ao servidor. Verifique se o backend está rodando e o endereço em EXPO_PUBLIC_API_URL.');
-      else setError(`Erro ${status}. Tente novamente.`);
+      if (status === 409) {
+        // Already connected — close modal and reflect as connected in UI
+        handleClose();
+        onSuccess(platform);
+      } else if (status === 400) {
+        setError('Dados inválidos. Verifique o e-mail e tente novamente.');
+      } else if (status === 401) {
+        setError('Sessão expirada. Faça login novamente.');
+      } else if (!status) {
+        setError('Não foi possível conectar ao servidor. Verifique se o backend está rodando e o EXPO_PUBLIC_API_URL.');
+      } else {
+        setError(`Erro ${status}. Tente novamente.`);
+      }
     } finally {
       setLoading(false);
     }
@@ -708,6 +716,8 @@ export function PerfilScreen() {
 
   const [platforms, setPlatforms] = useState<IntegrationStatus[]>([]);
   const [connectPlatform, setConnectPlatform] = useState<'UBER' | 'NOVENTA_E_NOVE' | null>(null);
+  const [disconnectPlatform, setDisconnectPlatform] = useState<'UBER' | 'NOVENTA_E_NOVE' | null>(null);
+  const [disconnecting, setDisconnecting] = useState(false);
   const [alertPrefs, setAlertPrefs] = useState<AlertPreference[]>([]);
   const [vehicle, setVehicle] = useState<VehicleData | null>(null);
 
@@ -718,9 +728,17 @@ export function PerfilScreen() {
   const [changePasswordVisible, setChangePasswordVisible] = useState(false);
   const [changePhoneVisible, setChangePhoneVisible] = useState(false);
 
+  const reloadIntegrations = useCallback(() => {
+    integrationsService.status().then((res) => setPlatforms(res.integrations)).catch(() => {});
+  }, []);
+
+  // Reload integrations every time this screen comes into focus
+  useFocusEffect(useCallback(() => {
+    reloadIntegrations();
+  }, [reloadIntegrations]));
+
   useEffect(() => {
     loadSubscription();
-    integrationsService.status().then((res) => setPlatforms(res.integrations)).catch(() => {});
     alertsService.getPreferences().then((res) => setAlertPrefs(res.preferences)).catch(() => {});
     vehiclesService.getVehicle().then(setVehicle).catch(() => {});
   }, []);
@@ -741,37 +759,28 @@ export function PerfilScreen() {
     if (value) {
       setConnectPlatform(platform);
     } else {
-      Alert.alert(
-        `Desconectar ${PLATFORM_LABEL[platform]}?`,
-        'Seu histórico será mantido.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Desconectar', style: 'destructive',
-            onPress: async () => {
-              try {
-                await integrationsService.disconnect(platform);
-                setPlatforms((prev) => prev.filter((i) => i.platform !== platform));
-              } catch (err: unknown) {
-                const status = (err as { response?: { status?: number } })?.response?.status;
-                const msg = status
-                  ? `Erro ${status} ao desconectar.`
-                  : 'Servidor inacessível. Verifique o EXPO_PUBLIC_API_URL.';
-                Alert.alert('Erro ao desconectar', msg);
-              }
-            },
-          },
-        ],
-      );
+      setDisconnectPlatform(platform);
+    }
+  }
+
+  async function handleConfirmDisconnect() {
+    if (!disconnectPlatform) return;
+    setDisconnecting(true);
+    try {
+      await integrationsService.disconnect(disconnectPlatform);
+      setDisconnectPlatform(null);
+      reloadIntegrations();
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const msg = status ? `Erro ${status} ao desconectar.` : 'Servidor inacessível.';
+      Alert.alert('Erro', msg);
+    } finally {
+      setDisconnecting(false);
     }
   }
 
   function handleConnectSuccess(platform: 'UBER' | 'NOVENTA_E_NOVE') {
-    setPlatforms((prev) => {
-      const existing = prev.find((p) => p.platform === platform);
-      if (existing) return prev.map((p) => p.platform === platform ? { ...p, is_active: true } : p);
-      return [...prev, { platform, is_active: true, last_sync_at: null, last_sync_status: null }];
-    });
+    reloadIntegrations();
   }
 
   function getAlertEnabled(type: string): boolean {
@@ -992,6 +1001,38 @@ export function PerfilScreen() {
       <EditProfileModal visible={editProfileVisible} onClose={() => setEditProfileVisible(false)} />
       <ChangePasswordModal visible={changePasswordVisible} onClose={() => setChangePasswordVisible(false)} />
       <ChangePhoneModal visible={changePhoneVisible} onClose={() => setChangePhoneVisible(false)} />
+
+      {/* Disconnect confirmation modal — replaces Alert.alert for web+native compat */}
+      <Modal visible={!!disconnectPlatform} transparent animationType="fade" onRequestClose={() => setDisconnectPlatform(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', paddingHorizontal: 32 }}>
+          <View style={{ backgroundColor: colors.card, borderRadius: radius.lg, padding: 24 }}>
+            <Text style={{ fontFamily: 'SpaceGrotesk', fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 8 }}>
+              Desconectar {PLATFORM_LABEL[disconnectPlatform ?? 'UBER']}?
+            </Text>
+            <Text style={{ ...typography.small, color: colors.text2, marginBottom: 20 }}>
+              Seu histórico de corridas será mantido.
+            </Text>
+            <TouchableOpacity
+              style={{ backgroundColor: colors.red, borderRadius: radius.sm, paddingVertical: 13, alignItems: 'center', marginBottom: 10 }}
+              onPress={handleConfirmDisconnect}
+              disabled={disconnecting}
+              activeOpacity={0.85}
+            >
+              {disconnecting
+                ? <ActivityIndicator color={colors.bg} size="small" />
+                : <Text style={{ fontFamily: 'SpaceGrotesk', fontSize: 15, fontWeight: '700', color: colors.bg }}>Desconectar</Text>
+              }
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ paddingVertical: 13, alignItems: 'center' }}
+              onPress={() => setDisconnectPlatform(null)}
+              activeOpacity={0.75}
+            >
+              <Text style={{ ...typography.label, color: colors.text2 }}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
