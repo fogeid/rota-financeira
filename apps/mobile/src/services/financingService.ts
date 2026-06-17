@@ -18,7 +18,16 @@ export const financingService = {
     desired_income: number;
     work_days_per_month: number;
   }): Promise<FinancingData> {
-    const { data } = await api.put<FinancingData>('/financing/me', payload);
-    return data;
+    try {
+      const { data } = await api.put<FinancingData>('/financing/me', payload);
+      return data;
+    } catch (err: unknown) {
+      // 404 → financing doesn't exist yet, create it
+      if ((err as { response?: { status?: number } })?.response?.status === 404) {
+        const { data } = await api.post<FinancingData>('/financing', payload);
+        return data;
+      }
+      throw err;
+    }
   },
 };
