@@ -24,7 +24,7 @@ export const financingService = {
     } catch (err: unknown) {
       // 404 → financing doesn't exist yet, create it
       if ((err as { response?: { status?: number } })?.response?.status === 404) {
-        const { data } = await api.post<FinancingData>('/financing', payload);
+        const { data } = await api.post<FinancingData>('/financing/me', payload);
         return data;
       }
       throw err;
