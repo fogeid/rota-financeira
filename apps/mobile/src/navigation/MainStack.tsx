@@ -11,9 +11,9 @@ import { PaymentSuccessScreen } from '../screens/main/PaymentSuccessScreen';
 export type MainStackParamList = {
   Tabs: undefined;
   Upgrade: undefined;
-  Payment: { planId: 'premium_monthly' | 'premium_annual' };
-  Cartao: { planId: 'premium_monthly' | 'premium_annual' };
-  Pix: { planId: 'premium_annual' };
+  Payment: { planId: 'premium_monthly' | 'premium_yearly' };
+  Cartao: { planId: 'premium_monthly' | 'premium_yearly' };
+  Pix: { planId: 'premium_yearly' };
   PaymentSuccess: { method: 'card' | 'pix'; planId: string };
 };
 

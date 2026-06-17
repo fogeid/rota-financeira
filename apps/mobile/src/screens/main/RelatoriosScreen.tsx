@@ -7,6 +7,7 @@ import {
   SkeletonHeroCard, SkeletonMetricGrid,
 } from '../../components';
 import { useReportsStore } from '../../store/reportsStore';
+import { useSubscriptionStore } from '../../store/subscriptionStore';
 import { formatCurrency } from '../../utils/formatters';
 
 type ReportTab = 'current' | 'previous' | 'annual';
@@ -40,7 +41,7 @@ export function RelatoriosScreen() {
     load();
   }, []);
 
-  const isPro = true; // TODO: connect to authStore plan check
+  const isPro = useSubscriptionStore((s) => s.isPro)();
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>

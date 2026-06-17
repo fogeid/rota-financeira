@@ -9,7 +9,7 @@ type Props = NativeStackScreenProps<MainStackParamList, 'PaymentSuccess'>;
 
 const PLAN_LABEL: Record<string, string> = {
   premium_monthly: 'Mensal · R$ 9,90/mês',
-  premium_annual: 'Anual · R$ 89,00/ano',
+  premium_yearly: 'Anual · R$ 89,00/ano',
 };
 
 const METHOD_LABEL: Record<string, string> = {

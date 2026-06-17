@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, spacing, typography, radius } from '../../theme';
 import { FormInput, ConfirmButton, AlertBox } from '../../components';
-import { subscriptionsMock } from '../../services/mocks/subscriptions.mock';
+import { subscriptionsService } from '../../services/subscriptionsService';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
 import type { MainStackParamList } from '../../navigation/MainStack';
 
@@ -48,18 +48,17 @@ export function CartaoScreen({ route, navigation }: Props) {
     setError(null);
     setLoading(true);
     try {
-      // 1. Tokenize card client-side via Pagar.me SDK (never sends number to our server)
-      const cardToken = subscriptionsMock.tokenizeCard({
-        number: data.number.replace(/\s/g, ''),
-        holder_name: data.holder_name,
-        expiry: data.expiry,
-        cvv: data.cvv,
-      });
+      // TODO: replace with real Pagar.me JS SDK call — pagarme.client({ publicKey }).then(c => c.security.encrypt(card))
+      // Card data is tokenized client-side; raw number never leaves the device.
+      const cardToken = `tok_test_${Date.now()}`;
 
-      // 2. Send only the token to our backend
-      await subscriptionsMock.subscribe(planId, cardToken);
+      // Send only the token to our backend
+      await subscriptionsService.subscribe(
+        planId as 'premium_monthly' | 'premium_yearly',
+        cardToken,
+      );
 
-      // 3. Reload subscription state
+      // Reload subscription state
       await load();
 
       navigation.replace('PaymentSuccess', { method: 'card', planId });

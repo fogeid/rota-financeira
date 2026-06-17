@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, radius } from '../../theme';
@@ -7,16 +7,29 @@ import {
   SkeletonHeroCard, SkeletonMetricGrid,
 } from '../../components';
 import { useFinancingStore } from '../../store/financingStore';
+import { earningsService } from '../../services/earningsService';
 import { formatCurrency } from '../../utils/formatters';
+import type { EarningItem } from '../../types/api';
 
 const DAYS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
-const TODAY_DOW = new Date().getDay();
 
-function buildWeekDays(goal: number) {
-  const MOCK_VALUES = [320, 210, 290, 0, 410, 380, 0];
+function buildWeekDays(goal: number, earnings: EarningItem[]) {
+  const today = new Date();
+  const todayDow = today.getDay();
+  const dayTotals: Record<number, number> = {};
+
+  for (const e of earnings) {
+    const d = new Date(e.earned_at);
+    const diff = Math.floor((today.getTime() - d.getTime()) / 86400000);
+    if (diff >= 0 && diff < 7) {
+      const dow = d.getDay();
+      dayTotals[dow] = (dayTotals[dow] ?? 0) + e.amount;
+    }
+  }
+
   return DAYS.map((day, i) => ({
     day,
-    value: i <= TODAY_DOW ? MOCK_VALUES[i] : 0,
+    value: i <= todayDow ? (dayTotals[i] ?? 0) : 0,
     goal,
   }));
 }
@@ -29,9 +42,12 @@ const HEALTH_ALERT: Record<string, { variant: 'green' | 'amber' | 'red'; text: s
 
 export function MeuCarroScreen() {
   const { data, progress, isLoading, error, load } = useFinancingStore();
+  const [weekEarnings, setWeekEarnings] = useState<EarningItem[]>([]);
 
   useEffect(() => {
     load();
+    const thisMonth = new Date().toISOString().slice(0, 7);
+    earningsService.list({ month: thisMonth }).then((res) => setWeekEarnings(res.data)).catch(() => {});
   }, []);
 
   const progressColor =
@@ -168,7 +184,7 @@ export function MeuCarroScreen() {
         <>
           <Text style={styles.sectionLabel}>Semana</Text>
           <Card>
-            <WeekBarChart data={buildWeekDays(data.calculated_daily_goal)} />
+            <WeekBarChart data={buildWeekDays(data.calculated_daily_goal, weekEarnings)} />
           </Card>
         </>
       )}

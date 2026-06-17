@@ -9,12 +9,12 @@ type Props = NativeStackScreenProps<MainStackParamList, 'Payment'>;
 
 const PRICE_LABEL: Record<string, string> = {
   premium_monthly: 'R$ 9,90/mês',
-  premium_annual: 'R$ 89,00/ano',
+  premium_yearly: 'R$ 89,00/ano',
 };
 
 export function PaymentScreen({ route, navigation }: Props) {
   const { planId } = route.params;
-  const isAnnual = planId === 'premium_annual';
+  const isAnnual = planId === 'premium_yearly';
 
   return (
     <View style={styles.screen}>
