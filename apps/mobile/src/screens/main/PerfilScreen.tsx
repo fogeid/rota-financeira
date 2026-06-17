@@ -662,30 +662,17 @@ function SettingRow({
   isLast?: boolean;
   destructive?: boolean;
 }) {
-  if (toggle) {
-    return (
-      <View style={[styles.settingRow, !isLast && styles.settingDivider]}>
-        <View style={[styles.settingIcon, destructive && { backgroundColor: colors.redBg }]}>
-          <Ionicons name={icon} size={16} color={destructive ? colors.red : colors.text2} />
-        </View>
-        <Text style={[styles.settingLabel, destructive && { color: colors.red }]}>{label}</Text>
-        <View style={{ flex: 1 }} />
-        {value ? <Text style={styles.settingValue}>{value}</Text> : null}
-        <Switch
-          value={toggleValue}
-          onValueChange={onToggle}
-          trackColor={{ false: colors.border2, true: colors.green }}
-          thumbColor={colors.bg}
-        />
-      </View>
-    );
-  }
+  // Switch is always display-only — the row itself handles the tap to avoid
+  // Android's Switch double-fire bug when value doesn't update immediately.
+  const handlePress = toggle
+    ? () => onToggle?.(!toggleValue)
+    : onPress;
 
   return (
     <TouchableOpacity
       style={[styles.settingRow, !isLast && styles.settingDivider]}
-      onPress={onPress}
-      disabled={!onPress}
+      onPress={handlePress}
+      disabled={!handlePress}
       activeOpacity={0.75}
     >
       <View style={[styles.settingIcon, destructive && { backgroundColor: colors.redBg }]}>
@@ -694,7 +681,18 @@ function SettingRow({
       <Text style={[styles.settingLabel, destructive && { color: colors.red }]}>{label}</Text>
       <View style={{ flex: 1 }} />
       {value ? <Text style={styles.settingValue}>{value}</Text> : null}
-      <Ionicons name="chevron-forward" size={16} color={colors.text3} />
+      {toggle ? (
+        <View pointerEvents="none">
+          <Switch
+            value={toggleValue}
+            onValueChange={undefined}
+            trackColor={{ false: colors.border2, true: colors.green }}
+            thumbColor={colors.bg}
+          />
+        </View>
+      ) : (
+        <Ionicons name="chevron-forward" size={16} color={colors.text3} />
+      )}
     </TouchableOpacity>
   );
 }
