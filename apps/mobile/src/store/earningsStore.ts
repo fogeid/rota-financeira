@@ -18,7 +18,10 @@ interface EarningsStore {
 
 const periodToDate = (period: Period) => {
   const now = new Date();
-  if (period === 'today') return { date: now.toISOString().slice(0, 10) };
+  if (period === 'today') {
+    const today = now.toISOString().slice(0, 10);
+    return { date_from: today, date_to: today };
+  }
   if (period === 'week') return { month: now.toISOString().slice(0, 7) };
   return { month: now.toISOString().slice(0, 7) };
 };

@@ -15,7 +15,21 @@ export const costsService = {
   },
 
   async create(payload: Omit<CostItem, 'id'>): Promise<CostItem> {
-    const { data } = await api.post<CostItem>('/costs', payload);
+    // Backend expects flat fields, not nested fuel_log/maintenance_log objects
+    const { fuel_log, maintenance_log, ...base } = payload;
+    const body = {
+      ...base,
+      ...(fuel_log ?? {}),
+      ...(maintenance_log
+        ? {
+            service_type: maintenance_log.service_type,
+            current_odometer_km: maintenance_log.current_odometer_km,
+            next_service_km: maintenance_log.next_service_km,
+            reminder_enabled: maintenance_log.reminder_enabled,
+          }
+        : {}),
+    };
+    const { data } = await api.post<CostItem>('/costs', body);
     return data;
   },
 

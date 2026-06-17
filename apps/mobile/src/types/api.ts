@@ -47,7 +47,7 @@ export interface EarningsSummary {
   gross_total: number;
   by_platform: Partial<Record<Platform, number>>;
   trips_count: number;
-  best_hour: string;
+  best_hour: string | null;
   days_worked: number;
 }
 

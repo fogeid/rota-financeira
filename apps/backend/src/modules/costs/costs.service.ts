@@ -117,16 +117,24 @@ export class CostsService {
       _count: { id: true },
     });
 
+    const kmDriven = Math.max(0, (lastOdometer ?? 0) - (firstOdometer ?? 0));
+
+    const byTypeRecord: Record<string, { total: number; percentage: number }> = {};
+    for (const b of byType) {
+      const typeTotal = Math.round(Number((b._sum.amount as Decimal | null) ?? 0) * 100) / 100;
+      byTypeRecord[b.type] = {
+        total: typeTotal,
+        percentage: totalAmount > 0 ? Math.round((typeTotal / totalAmount) * 100) : 0,
+      };
+    }
+
     return {
       month: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`,
-      total_amount: Math.round(totalAmount * 100) / 100,
+      total: Math.round(totalAmount * 100) / 100,
       total_fuel: Math.round(totalFuel * 100) / 100,
+      km_driven: kmDriven,
       cost_per_km: costPerKm,
-      by_type: byType.map((b) => ({
-        type: b.type,
-        total: Number((b._sum.amount as Decimal | null) ?? 0),
-        count: b._count.id,
-      })),
+      by_type: byTypeRecord,
     };
   }
 
