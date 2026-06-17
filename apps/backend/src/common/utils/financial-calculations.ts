@@ -230,14 +230,14 @@ export function calculateProjection(monthlyValues: number[]): number | null {
 // UTILITÁRIOS DE DATA
 // ─────────────────────────────────────────────────────────
 
-/** Retorna o primeiro dia do mês para uma data. */
+/** Retorna o primeiro dia do mês em UTC para uma data. */
 export function firstDayOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 }
 
-/** Retorna o último dia do mês para uma data. */
+/** Retorna o último dia do mês em UTC para uma data. */
 export function lastDayOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0, 23, 59, 59, 999));
 }
 
 /** Parseia string "YYYY-MM" e retorna o primeiro dia do mês correspondente. */

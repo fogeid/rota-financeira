@@ -129,7 +129,7 @@ export class CostsService {
     }
 
     return {
-      month: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`,
+      month: `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, '0')}`,
       total: Math.round(totalAmount * 100) / 100,
       total_fuel: Math.round(totalFuel * 100) / 100,
       km_driven: kmDriven,
