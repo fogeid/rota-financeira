@@ -662,11 +662,30 @@ function SettingRow({
   isLast?: boolean;
   destructive?: boolean;
 }) {
+  if (toggle) {
+    return (
+      <View style={[styles.settingRow, !isLast && styles.settingDivider]}>
+        <View style={[styles.settingIcon, destructive && { backgroundColor: colors.redBg }]}>
+          <Ionicons name={icon} size={16} color={destructive ? colors.red : colors.text2} />
+        </View>
+        <Text style={[styles.settingLabel, destructive && { color: colors.red }]}>{label}</Text>
+        <View style={{ flex: 1 }} />
+        {value ? <Text style={styles.settingValue}>{value}</Text> : null}
+        <Switch
+          value={toggleValue}
+          onValueChange={onToggle}
+          trackColor={{ false: colors.border2, true: colors.green }}
+          thumbColor={colors.bg}
+        />
+      </View>
+    );
+  }
+
   return (
     <TouchableOpacity
       style={[styles.settingRow, !isLast && styles.settingDivider]}
       onPress={onPress}
-      disabled={toggle || !onPress}
+      disabled={!onPress}
       activeOpacity={0.75}
     >
       <View style={[styles.settingIcon, destructive && { backgroundColor: colors.redBg }]}>
@@ -675,16 +694,7 @@ function SettingRow({
       <Text style={[styles.settingLabel, destructive && { color: colors.red }]}>{label}</Text>
       <View style={{ flex: 1 }} />
       {value ? <Text style={styles.settingValue}>{value}</Text> : null}
-      {toggle ? (
-        <Switch
-          value={toggleValue}
-          onValueChange={onToggle}
-          trackColor={{ false: colors.border2, true: colors.green }}
-          thumbColor={colors.bg}
-        />
-      ) : (
-        <Ionicons name="chevron-forward" size={16} color={colors.text3} />
-      )}
+      <Ionicons name="chevron-forward" size={16} color={colors.text3} />
     </TouchableOpacity>
   );
 }
@@ -744,8 +754,12 @@ export function PerfilScreen() {
               try {
                 await integrationsService.disconnect(platform);
                 setPlatforms((prev) => prev.filter((i) => i.platform !== platform));
-              } catch {
-                Alert.alert('Erro', 'Não foi possível desconectar. Tente novamente.');
+              } catch (err: unknown) {
+                const status = (err as { response?: { status?: number } })?.response?.status;
+                const msg = status
+                  ? `Erro ${status} ao desconectar.`
+                  : 'Servidor inacessível. Verifique o EXPO_PUBLIC_API_URL.';
+                Alert.alert('Erro ao desconectar', msg);
               }
             },
           },
