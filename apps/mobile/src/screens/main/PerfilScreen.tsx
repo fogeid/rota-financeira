@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, Modal,
-  TextInput, Alert, ActivityIndicator,
+  TextInput, Alert, ActivityIndicator, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -10,9 +10,15 @@ import { colors, spacing, typography, radius } from '../../theme';
 import { Card, Badge, AlertBox } from '../../components';
 import { useAuthStore } from '../../store/authStore';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
+import { useFinancingStore } from '../../store/financingStore';
 import { integrationsService } from '../../services/integrationsService';
 import { usersService } from '../../services/usersService';
+import { vehiclesService } from '../../services/vehiclesService';
+import { alertsService } from '../../services/alertsService';
+import { subscriptionsService } from '../../services/subscriptionsService';
 import type { IntegrationStatus } from '../../types/api';
+import type { VehicleData } from '../../services/vehiclesService';
+import type { AlertPreference } from '../../services/alertsService';
 import type { MainStackParamList } from '../../navigation/MainStack';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
@@ -22,18 +28,52 @@ const PLATFORM_LABEL: Record<string, string> = {
   NOVENTA_E_NOVE: '99',
 };
 
+const WHATSAPP_URL = 'https://wa.me/5511999999999?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20o%20Rota%20Financeira';
+
 // ─── Edit Vehicle Modal ────────────────────────────────────────────────────
-function EditVehicleModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const [model, setModel] = useState('Chevrolet Onix 2024');
-  const [plate, setPlate] = useState('ABC-1D23');
-  const [consumption, setConsumption] = useState('12.4');
-  const [saving, setSaving] = useState(false);
+function EditVehicleModal({ visible, onClose, onSaved }: {
+  visible: boolean;
+  onClose: () => void;
+  onSaved: (v: VehicleData) => void;
+}) {
+  const [model, setModel] = useState('');
+  const [year, setYear] = useState('');
+  const [plate, setPlate] = useState('');
+  const [consumption, setConsumption] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (visible) {
+      setError(null);
+      vehiclesService.getVehicle().then((v) => {
+        setModel(v.model);
+        setYear(String(v.year));
+        setPlate(v.plate);
+        setConsumption(String(v.fuel_efficiency).replace('.', ','));
+      }).catch(() => {});
+    }
+  }, [visible]);
 
   async function handleSave() {
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setSaving(false);
-    onClose();
+    const yearNum = parseInt(year);
+    const consumptionNum = parseFloat(consumption.replace(',', '.'));
+    if (!model.trim() || !plate.trim()) { setError('Modelo e placa são obrigatórios.'); return; }
+    if (isNaN(yearNum) || yearNum < 1990 || yearNum > 2027) { setError('Ano inválido (1990–2027).'); return; }
+    if (isNaN(consumptionNum) || consumptionNum < 4 || consumptionNum > 30) { setError('Consumo inválido (4–30 km/L).'); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const updated = await vehiclesService.updateVehicle({
+        model: model.trim(), year: yearNum, plate: plate.trim().toUpperCase(), fuel_efficiency: consumptionNum,
+      });
+      onSaved(updated);
+      onClose();
+    } catch {
+      setError('Erro ao salvar. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -42,18 +82,25 @@ function EditVehicleModal({ visible, onClose }: { visible: boolean; onClose: () 
         <View style={modal.sheet}>
           <View style={modal.header}>
             <Text style={modal.title}>Editar veículo</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={22} color={colors.text2} />
-            </TouchableOpacity>
+            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color={colors.text2} /></TouchableOpacity>
           </View>
+          {error && <AlertBox variant="red" message={error} style={{ marginBottom: 8 }} />}
           <Text style={modal.label}>Modelo</Text>
-          <TextInput style={modal.input} value={model} onChangeText={setModel} placeholderTextColor={colors.text3} />
+          <TextInput style={modal.input} value={model} onChangeText={setModel} placeholder="Chevrolet Onix 2024" placeholderTextColor={colors.text3} />
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={modal.label}>Ano</Text>
+              <TextInput style={modal.input} value={year} onChangeText={setYear} keyboardType="numeric" placeholder="2024" placeholderTextColor={colors.text3} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={modal.label}>Consumo (km/L)</Text>
+              <TextInput style={modal.input} value={consumption} onChangeText={setConsumption} keyboardType="decimal-pad" placeholder="12,4" placeholderTextColor={colors.text3} />
+            </View>
+          </View>
           <Text style={modal.label}>Placa</Text>
-          <TextInput style={modal.input} value={plate} onChangeText={setPlate} autoCapitalize="characters" placeholderTextColor={colors.text3} />
-          <Text style={modal.label}>Consumo médio (km/L)</Text>
-          <TextInput style={modal.input} value={consumption} onChangeText={setConsumption} keyboardType="decimal-pad" placeholderTextColor={colors.text3} />
-          <TouchableOpacity style={modal.saveBtn} onPress={handleSave} disabled={saving} activeOpacity={0.85}>
-            {saving ? <ActivityIndicator color={colors.bg} size="small" /> : <Text style={modal.saveBtnText}>Salvar</Text>}
+          <TextInput style={modal.input} value={plate} onChangeText={setPlate} autoCapitalize="characters" placeholder="ABC-1D23" placeholderTextColor={colors.text3} />
+          <TouchableOpacity style={modal.saveBtn} onPress={handleSave} disabled={loading} activeOpacity={0.85}>
+            {loading ? <ActivityIndicator color={colors.bg} size="small" /> : <Text style={modal.saveBtnText}>Salvar</Text>}
           </TouchableOpacity>
         </View>
       </View>
@@ -62,17 +109,53 @@ function EditVehicleModal({ visible, onClose }: { visible: boolean; onClose: () 
 }
 
 // ─── Edit Financing Modal ──────────────────────────────────────────────────
-function EditFinancingModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const [totalDebt, setTotalDebt] = useState('45000');
-  const [installment, setInstallment] = useState('1250');
-  const [remaining, setRemaining] = useState('36');
-  const [saving, setSaving] = useState(false);
+function EditFinancingModal({ visible, onClose, onSaved }: {
+  visible: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [installment, setInstallment] = useState('');
+  const [dueDay, setDueDay] = useState('');
+  const [desiredIncome, setDesiredIncome] = useState('');
+  const [workDays, setWorkDays] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (visible) {
+      setError(null);
+      import('../../services/financingService').then(({ financingService }) => {
+        financingService.getData().then((f) => {
+          setInstallment(String(f.monthly_installment).replace('.', ','));
+          setDueDay(String(f.due_day));
+          setDesiredIncome(String(f.desired_income).replace('.', ','));
+          setWorkDays(String(f.work_days_per_month));
+        }).catch(() => {});
+      });
+    }
+  }, [visible]);
 
   async function handleSave() {
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setSaving(false);
-    onClose();
+    const inst = parseFloat(installment.replace(',', '.'));
+    const due = parseInt(dueDay);
+    const income = parseFloat(desiredIncome.replace(',', '.'));
+    const days = parseInt(workDays);
+    if (isNaN(inst) || inst <= 0) { setError('Parcela inválida.'); return; }
+    if (isNaN(due) || due < 1 || due > 28) { setError('Dia de vencimento deve ser entre 1 e 28.'); return; }
+    if (isNaN(income) || income < 0) { setError('Renda desejada inválida.'); return; }
+    if (isNaN(days) || days < 1 || days > 30) { setError('Dias de trabalho deve ser entre 1 e 30.'); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const { financingService } = await import('../../services/financingService');
+      await financingService.update({ monthly_installment: inst, due_day: due, desired_income: income, work_days_per_month: days });
+      onSaved();
+      onClose();
+    } catch {
+      setError('Erro ao salvar. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -81,18 +164,25 @@ function EditFinancingModal({ visible, onClose }: { visible: boolean; onClose: (
         <View style={modal.sheet}>
           <View style={modal.header}>
             <Text style={modal.title}>Editar financiamento</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={22} color={colors.text2} />
-            </TouchableOpacity>
+            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color={colors.text2} /></TouchableOpacity>
           </View>
-          <Text style={modal.label}>Saldo devedor (R$)</Text>
-          <TextInput style={modal.input} value={totalDebt} onChangeText={setTotalDebt} keyboardType="numeric" placeholderTextColor={colors.text3} />
-          <Text style={modal.label}>Parcela mensal (R$)</Text>
-          <TextInput style={modal.input} value={installment} onChangeText={setInstallment} keyboardType="numeric" placeholderTextColor={colors.text3} />
-          <Text style={modal.label}>Parcelas restantes</Text>
-          <TextInput style={modal.input} value={remaining} onChangeText={setRemaining} keyboardType="numeric" placeholderTextColor={colors.text3} />
-          <TouchableOpacity style={modal.saveBtn} onPress={handleSave} disabled={saving} activeOpacity={0.85}>
-            {saving ? <ActivityIndicator color={colors.bg} size="small" /> : <Text style={modal.saveBtnText}>Salvar</Text>}
+          {error && <AlertBox variant="red" message={error} style={{ marginBottom: 8 }} />}
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={modal.label}>Parcela mensal (R$)</Text>
+              <TextInput style={modal.input} value={installment} onChangeText={setInstallment} keyboardType="decimal-pad" placeholder="1.250,00" placeholderTextColor={colors.text3} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={modal.label}>Vencimento (dia)</Text>
+              <TextInput style={modal.input} value={dueDay} onChangeText={setDueDay} keyboardType="numeric" placeholder="25" placeholderTextColor={colors.text3} maxLength={2} />
+            </View>
+          </View>
+          <Text style={modal.label}>Renda desejada (R$)</Text>
+          <TextInput style={modal.input} value={desiredIncome} onChangeText={setDesiredIncome} keyboardType="decimal-pad" placeholder="2.000,00" placeholderTextColor={colors.text3} />
+          <Text style={modal.label}>Dias trabalhados/mês</Text>
+          <TextInput style={modal.input} value={workDays} onChangeText={setWorkDays} keyboardType="numeric" placeholder="22" placeholderTextColor={colors.text3} maxLength={2} />
+          <TouchableOpacity style={modal.saveBtn} onPress={handleSave} disabled={loading} activeOpacity={0.85}>
+            {loading ? <ActivityIndicator color={colors.bg} size="small" /> : <Text style={modal.saveBtnText}>Salvar</Text>}
           </TouchableOpacity>
         </View>
       </View>
@@ -104,38 +194,36 @@ function EditFinancingModal({ visible, onClose }: { visible: boolean; onClose: (
 const DELETE_CONFIRMATION_TEXT = 'EXCLUIR MINHA CONTA';
 
 function DeleteAccountModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const [step, setStep] = useState<1 | 2>(1);
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const logout = useAuthStore((s) => s.logout);
 
   const canDelete = password.length >= 6 && confirmation === DELETE_CONFIRMATION_TEXT;
 
   async function handleDelete() {
     if (!canDelete) return;
-    Alert.alert(
-      'Confirmar exclusão',
-      'Esta ação é irreversível. Todos os seus dados serão excluídos permanentemente.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir conta',
-          style: 'destructive',
-          onPress: async () => {
-            setDeleting(true);
-            await new Promise((r) => setTimeout(r, 1200));
-            setDeleting(false);
-            onClose();
-            logout();
-          },
-        },
-      ],
-    );
+    setDeleting(true);
+    setError(null);
+    try {
+      await usersService.deleteAccount({ password, confirmation: DELETE_CONFIRMATION_TEXT });
+      onClose();
+      logout();
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) setError('Senha incorreta.');
+      else setError('Erro ao excluir conta. Tente novamente.');
+      setDeleting(false);
+    }
   }
 
   function handleClose() {
+    setStep(1);
     setPassword('');
     setConfirmation('');
+    setError(null);
     onClose();
   }
 
@@ -145,47 +233,60 @@ function DeleteAccountModal({ visible, onClose }: { visible: boolean; onClose: (
         <View style={modal.sheet}>
           <View style={modal.header}>
             <Text style={[modal.title, { color: colors.red }]}>Excluir conta</Text>
-            <TouchableOpacity onPress={handleClose}>
-              <Ionicons name="close" size={22} color={colors.text2} />
-            </TouchableOpacity>
+            <TouchableOpacity onPress={handleClose}><Ionicons name="close" size={22} color={colors.text2} /></TouchableOpacity>
           </View>
-          <AlertBox
-            variant="red"
-            icon="⚠️"
-            message="Esta ação é permanente e irreversível. Todos os seus dados, histórico e assinatura serão excluídos."
-            style={{ marginBottom: 16 }}
-          />
-          <Text style={modal.label}>Sua senha atual</Text>
-          <TextInput
-            style={modal.input}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            placeholder="Digite sua senha"
-            placeholderTextColor={colors.text3}
-          />
-          <Text style={modal.label}>
-            Digite <Text style={{ color: colors.red, fontWeight: '700' }}>{DELETE_CONFIRMATION_TEXT}</Text> para confirmar
-          </Text>
-          <TextInput
-            style={[modal.input, confirmation === DELETE_CONFIRMATION_TEXT && { borderColor: colors.red }]}
-            value={confirmation}
-            onChangeText={setConfirmation}
-            placeholder={DELETE_CONFIRMATION_TEXT}
-            placeholderTextColor={colors.text3}
-            autoCapitalize="characters"
-          />
-          <TouchableOpacity
-            style={[modal.saveBtn, { backgroundColor: colors.red }, !canDelete && { opacity: 0.4 }]}
-            onPress={handleDelete}
-            disabled={!canDelete || deleting}
-            activeOpacity={0.85}
-          >
-            {deleting
-              ? <ActivityIndicator color={colors.bg} size="small" />
-              : <Text style={modal.saveBtnText}>Excluir permanentemente</Text>
-            }
-          </TouchableOpacity>
+          {step === 1 ? (
+            <>
+              <AlertBox
+                variant="red"
+                icon="⚠️"
+                message="Esta ação é permanente e irreversível. Todos os seus dados, histórico e assinatura serão excluídos em até 30 dias."
+                style={{ marginBottom: 16 }}
+              />
+              <TouchableOpacity
+                style={[modal.saveBtn, { backgroundColor: colors.red }]}
+                onPress={() => setStep(2)}
+                activeOpacity={0.85}
+              >
+                <Text style={modal.saveBtnText}>Continuar com a exclusão</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              {error && <AlertBox variant="red" message={error} style={{ marginBottom: 8 }} />}
+              <Text style={modal.label}>Sua senha atual</Text>
+              <TextInput
+                style={modal.input}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                placeholder="Digite sua senha"
+                placeholderTextColor={colors.text3}
+              />
+              <Text style={modal.label}>
+                Digite <Text style={{ color: colors.red, fontWeight: '700' }}>{DELETE_CONFIRMATION_TEXT}</Text> para confirmar
+              </Text>
+              <TextInput
+                style={[modal.input, confirmation === DELETE_CONFIRMATION_TEXT && { borderColor: colors.red }]}
+                value={confirmation}
+                onChangeText={setConfirmation}
+                placeholder={DELETE_CONFIRMATION_TEXT}
+                placeholderTextColor={colors.text3}
+                autoCapitalize="characters"
+              />
+              <TouchableOpacity
+                style={[modal.saveBtn, { backgroundColor: colors.red }, !canDelete && { opacity: 0.4 }]}
+                onPress={handleDelete}
+                disabled={!canDelete || deleting}
+                activeOpacity={0.85}
+              >
+                {deleting
+                  ? <ActivityIndicator color={colors.bg} size="small" />
+                  : <Text style={modal.saveBtnText}>Excluir minha conta permanentemente</Text>
+                }
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
     </Modal>
@@ -210,18 +311,13 @@ function ConnectPlatformModal({
   const label = platform ? PLATFORM_LABEL[platform] : '';
 
   function handleClose() {
-    setEmail('');
-    setPassword('');
-    setError(null);
+    setEmail(''); setPassword(''); setError(null);
     onClose();
   }
 
   async function handleConnect() {
     if (!platform) return;
-    if (!email.trim() || !password) {
-      setError('Preencha e-mail e senha.');
-      return;
-    }
+    if (!email.trim() || !password) { setError('Preencha e-mail e senha.'); return; }
     setLoading(true);
     setError(null);
     try {
@@ -230,11 +326,8 @@ function ConnectPlatformModal({
       onSuccess(platform);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 400) {
-        setError('E-mail ou senha incorretos.');
-      } else {
-        setError('Sem conexão. Verifique sua internet.');
-      }
+      if (status === 400) setError('E-mail ou senha incorretos.');
+      else setError('Sem conexão. Verifique sua internet.');
     } finally {
       setLoading(false);
     }
@@ -246,47 +339,26 @@ function ConnectPlatformModal({
         <View style={modal.sheet}>
           <View style={modal.header}>
             <Text style={modal.title}>Conectar {label}</Text>
-            <TouchableOpacity onPress={handleClose}>
-              <Ionicons name="close" size={22} color={colors.text2} />
-            </TouchableOpacity>
+            <TouchableOpacity onPress={handleClose}><Ionicons name="close" size={22} color={colors.text2} /></TouchableOpacity>
           </View>
-
           {error && <AlertBox variant="red" message={error} style={{ marginBottom: 8 }} />}
-
           <Text style={modal.label}>E-mail da conta {label}</Text>
           <TextInput
-            style={modal.input}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            placeholder="seu@email.com"
-            placeholderTextColor={colors.text3}
+            style={modal.input} value={email} onChangeText={setEmail}
+            keyboardType="email-address" autoCapitalize="none" autoComplete="email"
+            placeholder="seu@email.com" placeholderTextColor={colors.text3}
           />
-
           <Text style={modal.label}>Senha</Text>
           <TextInput
-            style={modal.input}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            placeholder="Sua senha"
-            placeholderTextColor={colors.text3}
+            style={modal.input} value={password} onChangeText={setPassword}
+            secureTextEntry placeholder="Sua senha" placeholderTextColor={colors.text3}
           />
-
           <Text style={[typography.small, { color: colors.text3, marginTop: 8, textAlign: 'center' }]}>
             Suas credenciais são criptografadas e nunca compartilhadas.
           </Text>
-
-          <TouchableOpacity
-            style={[modal.saveBtn, loading && { opacity: 0.6 }]}
-            onPress={handleConnect}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
+          <TouchableOpacity style={[modal.saveBtn, loading && { opacity: 0.6 }]} onPress={handleConnect} disabled={loading} activeOpacity={0.85}>
             {loading
-              ? <ActivityIndicator color={colors.bg} size="small" />
+              ? <><ActivityIndicator color={colors.bg} size="small" style={{ marginRight: 8 }} /><Text style={modal.saveBtnText}>Verificando...</Text></>
               : <Text style={modal.saveBtnText}>Conectar</Text>
             }
           </TouchableOpacity>
@@ -312,25 +384,20 @@ function EditProfileModal({ visible, onClose }: { visible: boolean; onClose: () 
       setEmail('');
       setCurrentPassword('');
       setError(null);
+      usersService.getMe().then((me) => setEmail(me.email.includes('*') ? '' : me.email)).catch(() => {});
     }
   }, [visible]);
 
-  function handleClose() {
-    setError(null);
-    onClose();
-  }
+  function handleClose() { setError(null); onClose(); }
 
   async function handleSave() {
-    if (!name.trim() || !currentPassword) {
-      setError('Nome e senha atual são obrigatórios.');
-      return;
-    }
+    if (!name.trim() || !currentPassword) { setError('Nome e senha atual são obrigatórios.'); return; }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('E-mail inválido.'); return; }
     setLoading(true);
     setError(null);
     try {
       const payload: { name: string; email?: string; current_password: string } = {
-        name: name.trim(),
-        current_password: currentPassword,
+        name: name.trim(), current_password: currentPassword,
       };
       if (email.trim()) payload.email = email.trim();
       const updated = await usersService.updateProfile(payload);
@@ -352,53 +419,21 @@ function EditProfileModal({ visible, onClose }: { visible: boolean; onClose: () 
         <View style={modal.sheet}>
           <View style={modal.header}>
             <Text style={modal.title}>Editar perfil</Text>
-            <TouchableOpacity onPress={handleClose}>
-              <Ionicons name="close" size={22} color={colors.text2} />
-            </TouchableOpacity>
+            <TouchableOpacity onPress={handleClose}><Ionicons name="close" size={22} color={colors.text2} /></TouchableOpacity>
           </View>
-
           {error && <AlertBox variant="red" message={error} style={{ marginBottom: 8 }} />}
-
           <Text style={modal.label}>Nome completo</Text>
-          <TextInput
-            style={modal.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="Seu nome"
-            placeholderTextColor={colors.text3}
-          />
-
+          <TextInput style={modal.input} value={name} onChangeText={setName} placeholder="Seu nome" placeholderTextColor={colors.text3} />
           <Text style={modal.label}>Novo e-mail (opcional)</Text>
           <TextInput
-            style={modal.input}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            placeholder="Deixe em branco para manter o atual"
-            placeholderTextColor={colors.text3}
+            style={modal.input} value={email} onChangeText={setEmail}
+            keyboardType="email-address" autoCapitalize="none"
+            placeholder="Deixe em branco para manter o atual" placeholderTextColor={colors.text3}
           />
-
           <Text style={modal.label}>Senha atual (obrigatória para confirmar)</Text>
-          <TextInput
-            style={modal.input}
-            value={currentPassword}
-            onChangeText={setCurrentPassword}
-            secureTextEntry
-            placeholder="Sua senha atual"
-            placeholderTextColor={colors.text3}
-          />
-
-          <TouchableOpacity
-            style={[modal.saveBtn, loading && { opacity: 0.6 }]}
-            onPress={handleSave}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            {loading
-              ? <ActivityIndicator color={colors.bg} size="small" />
-              : <Text style={modal.saveBtnText}>Salvar</Text>
-            }
+          <TextInput style={modal.input} value={currentPassword} onChangeText={setCurrentPassword} secureTextEntry placeholder="Sua senha atual" placeholderTextColor={colors.text3} />
+          <TouchableOpacity style={[modal.saveBtn, loading && { opacity: 0.6 }]} onPress={handleSave} disabled={loading} activeOpacity={0.85}>
+            {loading ? <ActivityIndicator color={colors.bg} size="small" /> : <Text style={modal.saveBtnText}>Salvar</Text>}
           </TouchableOpacity>
         </View>
       </View>
@@ -416,33 +451,20 @@ function ChangePasswordModal({ visible, onClose }: { visible: boolean; onClose: 
   const [error, setError] = useState<string | null>(null);
 
   function handleClose() {
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setError(null);
+    setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setError(null);
     onClose();
   }
 
   async function handleSave() {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setError('Preencha todos os campos.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError('Nova senha e confirmação não coincidem.');
-      return;
-    }
-    if (newPassword.length < 8) {
-      setError('A nova senha deve ter pelo menos 8 caracteres.');
-      return;
-    }
+    if (!currentPassword || !newPassword || !confirmPassword) { setError('Preencha todos os campos.'); return; }
+    if (newPassword !== confirmPassword) { setError('Nova senha e confirmação não coincidem.'); return; }
+    if (newPassword.length < 8) { setError('A nova senha deve ter pelo menos 8 caracteres.'); return; }
+    if (!/[A-Z]/.test(newPassword)) { setError('A nova senha deve ter pelo menos 1 letra maiúscula.'); return; }
+    if (!/[0-9]/.test(newPassword)) { setError('A nova senha deve ter pelo menos 1 número.'); return; }
     setLoading(true);
     setError(null);
     try {
-      await usersService.changePassword({
-        current_password: currentPassword,
-        new_password: newPassword,
-      });
+      await usersService.changePassword({ current_password: currentPassword, new_password: newPassword });
       handleClose();
       logout();
     } catch (err: unknown) {
@@ -460,53 +482,17 @@ function ChangePasswordModal({ visible, onClose }: { visible: boolean; onClose: 
         <View style={modal.sheet}>
           <View style={modal.header}>
             <Text style={modal.title}>Alterar senha</Text>
-            <TouchableOpacity onPress={handleClose}>
-              <Ionicons name="close" size={22} color={colors.text2} />
-            </TouchableOpacity>
+            <TouchableOpacity onPress={handleClose}><Ionicons name="close" size={22} color={colors.text2} /></TouchableOpacity>
           </View>
-
           {error && <AlertBox variant="red" message={error} style={{ marginBottom: 8 }} />}
-
           <Text style={modal.label}>Senha atual</Text>
-          <TextInput
-            style={modal.input}
-            value={currentPassword}
-            onChangeText={setCurrentPassword}
-            secureTextEntry
-            placeholder="Senha atual"
-            placeholderTextColor={colors.text3}
-          />
-
+          <TextInput style={modal.input} value={currentPassword} onChangeText={setCurrentPassword} secureTextEntry placeholder="Senha atual" placeholderTextColor={colors.text3} />
           <Text style={modal.label}>Nova senha</Text>
-          <TextInput
-            style={modal.input}
-            value={newPassword}
-            onChangeText={setNewPassword}
-            secureTextEntry
-            placeholder="Mínimo 8 caracteres"
-            placeholderTextColor={colors.text3}
-          />
-
+          <TextInput style={modal.input} value={newPassword} onChangeText={setNewPassword} secureTextEntry placeholder="Mín. 8 chars, 1 maiúscula, 1 número" placeholderTextColor={colors.text3} />
           <Text style={modal.label}>Confirmar nova senha</Text>
-          <TextInput
-            style={modal.input}
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-            placeholder="Repita a nova senha"
-            placeholderTextColor={colors.text3}
-          />
-
-          <TouchableOpacity
-            style={[modal.saveBtn, loading && { opacity: 0.6 }]}
-            onPress={handleSave}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            {loading
-              ? <ActivityIndicator color={colors.bg} size="small" />
-              : <Text style={modal.saveBtnText}>Alterar senha</Text>
-            }
+          <TextInput style={modal.input} value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry placeholder="Repita a nova senha" placeholderTextColor={colors.text3} />
+          <TouchableOpacity style={[modal.saveBtn, loading && { opacity: 0.6 }]} onPress={handleSave} disabled={loading} activeOpacity={0.85}>
+            {loading ? <ActivityIndicator color={colors.bg} size="small" /> : <Text style={modal.saveBtnText}>Alterar senha</Text>}
           </TouchableOpacity>
         </View>
       </View>
@@ -562,9 +548,13 @@ export function PerfilScreen() {
   const subscriptionInfo = useSubscriptionStore((s) => s.info);
   const loadSubscription = useSubscriptionStore((s) => s.load);
   const isPro = useSubscriptionStore((s) => s.isPro)();
+  const loadFinancing = useFinancingStore((s) => s.load);
 
   const [platforms, setPlatforms] = useState<IntegrationStatus[]>([]);
   const [connectPlatform, setConnectPlatform] = useState<'UBER' | 'NOVENTA_E_NOVE' | null>(null);
+  const [alertPrefs, setAlertPrefs] = useState<AlertPreference[]>([]);
+  const [vehicle, setVehicle] = useState<VehicleData | null>(null);
+
   const [vehicleModalVisible, setVehicleModalVisible] = useState(false);
   const [financingModalVisible, setFinancingModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
@@ -573,9 +563,9 @@ export function PerfilScreen() {
 
   useEffect(() => {
     loadSubscription();
-    integrationsService.status()
-      .then((res) => setPlatforms(res.integrations))
-      .catch(() => {});
+    integrationsService.status().then((res) => setPlatforms(res.integrations)).catch(() => {});
+    alertsService.getPreferences().then((res) => setAlertPrefs(res.preferences)).catch(() => {});
+    vehiclesService.getVehicle().then(setVehicle).catch(() => {});
   }, []);
 
   const trialDaysLeft = user?.trial_ends_at
@@ -600,8 +590,7 @@ export function PerfilScreen() {
         [
           { text: 'Cancelar', style: 'cancel' },
           {
-            text: 'Desconectar',
-            style: 'destructive',
+            text: 'Desconectar', style: 'destructive',
             onPress: async () => {
               try {
                 await integrationsService.disconnect(platform);
@@ -619,11 +608,57 @@ export function PerfilScreen() {
   function handleConnectSuccess(platform: 'UBER' | 'NOVENTA_E_NOVE') {
     setPlatforms((prev) => {
       const existing = prev.find((p) => p.platform === platform);
-      if (existing) {
-        return prev.map((p) => p.platform === platform ? { ...p, is_active: true } : p);
-      }
+      if (existing) return prev.map((p) => p.platform === platform ? { ...p, is_active: true } : p);
       return [...prev, { platform, is_active: true, last_sync_at: null, last_sync_status: null }];
     });
+  }
+
+  function getAlertEnabled(type: string): boolean {
+    return alertPrefs.find((p) => p.type === type)?.enabled ?? true;
+  }
+
+  async function handleToggleAlert(type: string, enabled: boolean) {
+    const prev = [...alertPrefs];
+    setAlertPrefs((prefs) => {
+      const existing = prefs.find((p) => p.type === type);
+      if (existing) return prefs.map((p) => p.type === type ? { ...p, enabled } : p);
+      return [...prefs, { type, enabled }];
+    });
+    try {
+      await alertsService.updatePreference(type, enabled);
+    } catch {
+      setAlertPrefs(prev);
+    }
+  }
+
+  function handleCancelSubscription() {
+    const accessUntil = renewalDate ?? 'a data atual';
+    Alert.alert(
+      'Cancelar assinatura?',
+      `Você continuará com acesso Premium até ${accessUntil}.`,
+      [
+        { text: 'Manter assinatura', style: 'cancel' },
+        {
+          text: 'Cancelar mesmo assim', style: 'destructive',
+          onPress: async () => {
+            try {
+              await subscriptionsService.cancel();
+              await loadSubscription();
+            } catch {
+              Alert.alert('Erro', 'Não foi possível cancelar. Tente novamente.');
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  async function handleSupport() {
+    try {
+      await Linking.openURL(WHATSAPP_URL);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.');
+    }
   }
 
   return (
@@ -631,17 +666,12 @@ export function PerfilScreen() {
       {/* Avatar + name */}
       <View style={styles.avatarSection}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarInitial}>
-            {user?.name?.charAt(0).toUpperCase() ?? 'M'}
-          </Text>
+          <Text style={styles.avatarInitial}>{user?.name?.charAt(0).toUpperCase() ?? 'M'}</Text>
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.userName}>{user?.name ?? 'Motorista'}</Text>
           <View style={styles.planRow}>
-            <Badge
-              variant={isPro ? 'green' : 'blue'}
-              label={isPro ? 'Pro' : 'Gratuito'}
-            />
+            <Badge variant={isPro ? 'green' : 'blue'} label={isPro ? 'Pro' : 'Gratuito'} />
             {trialDaysLeft !== null && trialDaysLeft > 0 && (
               <Text style={styles.trialText}>Trial · {trialDaysLeft} dias restantes</Text>
             )}
@@ -650,11 +680,7 @@ export function PerfilScreen() {
       </View>
 
       {trialDaysLeft !== null && trialDaysLeft <= 3 && trialDaysLeft > 0 && (
-        <AlertBox
-          variant="amber"
-          message={`Seu trial expira em ${trialDaysLeft} dia(s). Assine para manter o acesso.`}
-          style={{ marginBottom: 8 }}
-        />
+        <AlertBox variant="amber" message={`Seu trial expira em ${trialDaysLeft} dia(s). Assine para manter o acesso.`} style={{ marginBottom: 8 }} />
       )}
 
       {/* Subscription */}
@@ -669,14 +695,15 @@ export function PerfilScreen() {
               onPress={() => {}}
             />
             {renewalDate && (
-              <SettingRow
-                icon="calendar-outline"
-                label="Renovação em"
-                value={renewalDate}
-                isLast
-                onPress={() => {}}
-              />
+              <SettingRow icon="calendar-outline" label="Renovação em" value={renewalDate} onPress={() => {}} />
             )}
+            <SettingRow
+              icon="close-circle-outline"
+              label="Cancelar assinatura"
+              onPress={handleCancelSubscription}
+              isLast
+              destructive
+            />
           </>
         ) : (
           <SettingRow
@@ -693,14 +720,14 @@ export function PerfilScreen() {
       <Card>
         <SettingRow
           icon="car-outline"
-          label="Chevrolet Onix 2024"
-          value="ABC-1D23"
+          label={vehicle?.model ?? 'Adicionar veículo'}
+          value={vehicle?.plate}
           onPress={() => setVehicleModalVisible(true)}
         />
         <SettingRow
           icon="speedometer-outline"
           label="Consumo médio"
-          value="12,4 km/L"
+          value={vehicle ? `${String(vehicle.fuel_efficiency).replace('.', ',')} km/L` : '—'}
           onPress={() => setVehicleModalVisible(true)}
           isLast
         />
@@ -709,19 +736,7 @@ export function PerfilScreen() {
       {/* Financing */}
       <Text style={styles.sectionLabel}>Financiamento</Text>
       <Card>
-        <SettingRow
-          icon="cash-outline"
-          label="Parcela mensal"
-          value="R$ 1.250,00"
-          onPress={() => setFinancingModalVisible(true)}
-        />
-        <SettingRow
-          icon="time-outline"
-          label="Parcelas restantes"
-          value="36"
-          onPress={() => setFinancingModalVisible(true)}
-          isLast
-        />
+        <SettingRow icon="cash-outline" label="Editar dados do financiamento" onPress={() => setFinancingModalVisible(true)} isLast />
       </Card>
 
       {/* Platforms */}
@@ -747,17 +762,30 @@ export function PerfilScreen() {
       </Card>
 
       {/* Preferences */}
-      <Text style={styles.sectionLabel}>Preferências</Text>
+      <Text style={styles.sectionLabel}>Notificações</Text>
       <Card>
-        <SettingRow icon="notifications-outline" label="Notificações" toggle toggleValue={true} onToggle={() => {}} />
+        <SettingRow
+          icon="notifications-outline"
+          label="Alertas de meta"
+          toggle
+          toggleValue={getAlertEnabled('GOAL_REACHED')}
+          onToggle={(v) => handleToggleAlert('GOAL_REACHED', v)}
+        />
+        <SettingRow
+          icon="warning-outline"
+          label="Risco de parcela"
+          toggle
+          toggleValue={getAlertEnabled('INSTALLMENT_DUE')}
+          onToggle={(v) => handleToggleAlert('INSTALLMENT_DUE', v)}
+        />
         <SettingRow
           icon="finger-print-outline"
           label="Biometria"
           toggle
           toggleValue={biometryEnabled}
           onToggle={setBiometryEnabled}
+          isLast
         />
-        <SettingRow icon="moon-outline" label="Tema escuro" toggle toggleValue={true} onToggle={() => {}} isLast />
       </Card>
 
       {/* Account */}
@@ -766,7 +794,7 @@ export function PerfilScreen() {
         <SettingRow icon="person-outline" label="Editar perfil" onPress={() => setEditProfileVisible(true)} />
         <SettingRow icon="lock-closed-outline" label="Alterar senha" onPress={() => setChangePasswordVisible(true)} />
         <SettingRow icon="call-outline" label="Alterar telefone" onPress={() => {}} />
-        <SettingRow icon="help-circle-outline" label="Suporte via WhatsApp" onPress={() => {}} />
+        <SettingRow icon="help-circle-outline" label="Suporte via WhatsApp" onPress={handleSupport} />
         <SettingRow icon="document-text-outline" label="Termos de uso" onPress={() => {}} />
         <SettingRow icon="shield-outline" label="Política de privacidade" onPress={() => {}} isLast />
       </Card>
@@ -779,19 +807,21 @@ export function PerfilScreen() {
 
       {/* Delete account */}
       <Card style={{ marginTop: 8 }}>
-        <SettingRow
-          icon="trash-outline"
-          label="Excluir conta"
-          onPress={() => setDeleteModalVisible(true)}
-          isLast
-          destructive
-        />
+        <SettingRow icon="trash-outline" label="Excluir conta" onPress={() => setDeleteModalVisible(true)} isLast destructive />
       </Card>
 
       <View style={{ height: 40 }} />
 
-      <EditVehicleModal visible={vehicleModalVisible} onClose={() => setVehicleModalVisible(false)} />
-      <EditFinancingModal visible={financingModalVisible} onClose={() => setFinancingModalVisible(false)} />
+      <EditVehicleModal
+        visible={vehicleModalVisible}
+        onClose={() => setVehicleModalVisible(false)}
+        onSaved={(v) => { setVehicle(v); setVehicleModalVisible(false); }}
+      />
+      <EditFinancingModal
+        visible={financingModalVisible}
+        onClose={() => setFinancingModalVisible(false)}
+        onSaved={() => { loadFinancing(); setFinancingModalVisible(false); }}
+      />
       <DeleteAccountModal visible={deleteModalVisible} onClose={() => setDeleteModalVisible(false)} />
       <ConnectPlatformModal
         platform={connectPlatform}
@@ -826,10 +856,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase', letterSpacing: 0.8,
     marginBottom: 10, marginTop: 20,
   },
-  settingRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 13, gap: 12,
-  },
+  settingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, gap: 12 },
   settingDivider: { borderBottomWidth: 1, borderBottomColor: colors.border },
   settingIcon: {
     width: 30, height: 30, borderRadius: radius.xs,
@@ -846,10 +873,7 @@ const styles = StyleSheet.create({
 });
 
 const modal = StyleSheet.create({
-  overlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.65)',
-    justifyContent: 'flex-end',
-  },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
     padding: spacing.xl, paddingTop: 20,
@@ -864,7 +888,8 @@ const modal = StyleSheet.create({
   },
   saveBtn: {
     backgroundColor: colors.green, borderRadius: radius.sm,
-    paddingVertical: 14, alignItems: 'center', marginTop: 20,
+    paddingVertical: 14, alignItems: 'center', justifyContent: 'center',
+    flexDirection: 'row', marginTop: 20,
   },
   saveBtnText: { fontFamily: 'SpaceGrotesk', fontSize: 15, fontWeight: '700', color: colors.bg },
 });
