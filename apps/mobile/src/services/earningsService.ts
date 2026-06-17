@@ -2,7 +2,7 @@ import { api } from './api';
 import type { EarningItem, EarningsSummary, EarningsListResponse } from '../types/api';
 
 export const earningsService = {
-  async list(params?: { date?: string; month?: string; platform?: string; page?: number }): Promise<EarningsListResponse> {
+  async list(params?: { date_from?: string; date_to?: string; month?: string; platform?: string; page?: number }): Promise<EarningsListResponse> {
     const { data } = await api.get<EarningsListResponse>('/earnings', { params });
     return data;
   },

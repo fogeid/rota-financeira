@@ -58,10 +58,23 @@ export class EarningsService {
     });
   }
 
-  async getSummary(userId: string, month?: string) {
-    const refDate = month ? new Date(`${month}-01`) : new Date();
-    const start = firstDayOfMonth(refDate);
-    const end = lastDayOfMonth(refDate);
+  async getSummary(userId: string, period: string = 'month', month?: string) {
+    const now = new Date();
+    let start: Date;
+    let end: Date;
+
+    if (period === 'today') {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    } else if (period === 'week') {
+      start = new Date(now.getTime() - 6 * 86_400_000);
+      start.setHours(0, 0, 0, 0);
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    } else {
+      const refDate = month ? new Date(`${month}-01`) : now;
+      start = firstDayOfMonth(refDate);
+      end = lastDayOfMonth(refDate);
+    }
 
     const earnings = await this.prisma.earning.findMany({
       where: { user_id: userId, earned_at: { gte: start, lte: end } },
@@ -69,10 +82,10 @@ export class EarningsService {
     });
 
     const totalGross = earnings.reduce((s, e) => s + Number(e.amount as Decimal), 0);
-    const totalKm = earnings.reduce((s, e) => s + Number((e.km_driven as Decimal | null) ?? 0), 0);
     const totalTrips = earnings.length;
 
-    // Melhor hora: agrupa ganhos por hora do dia e pega o horário de maior rendimento
+    const daysWorked = new Set(earnings.map((e) => new Date(e.earned_at).toISOString().slice(0, 10))).size;
+
     const hourlyMap = new Map<number, number>();
     for (const e of earnings) {
       const hour = new Date(e.started_at).getHours();
@@ -87,25 +100,24 @@ export class EarningsService {
       }
     }
 
-    const byPlatform = await this.prisma.earning.groupBy({
+    const byPlatformRows = await this.prisma.earning.groupBy({
       by: ['platform'],
       where: { user_id: userId, earned_at: { gte: start, lte: end } },
       _sum: { amount: true },
-      _count: { id: true },
     });
 
+    const byPlatform: Record<string, number> = {};
+    for (const p of byPlatformRows) {
+      byPlatform[p.platform] = Math.round(Number((p._sum.amount as Decimal | null) ?? 0) * 100) / 100;
+    }
+
     return {
-      month: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`,
-      total_gross: Math.round(totalGross * 100) / 100,
-      total_trips: totalTrips,
-      total_km: Math.round(totalKm * 100) / 100,
-      avg_per_trip: totalTrips > 0 ? Math.round((totalGross / totalTrips) * 100) / 100 : 0,
-      best_hour: bestHour,
-      by_platform: byPlatform.map((p) => ({
-        platform: p.platform,
-        total: Number((p._sum.amount as Decimal | null) ?? 0),
-        trips: p._count.id,
-      })),
+      period,
+      gross_total: Math.round(totalGross * 100) / 100,
+      trips_count: totalTrips,
+      days_worked: daysWorked,
+      best_hour: bestHour !== null ? String(bestHour).padStart(2, '0') : null,
+      by_platform: byPlatform,
     };
   }
 

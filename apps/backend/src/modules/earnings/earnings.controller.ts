@@ -36,9 +36,13 @@ export class EarningsController {
   }
 
   @Get('summary')
-  @ApiOperation({ summary: 'Resumo de ganhos do mês (total, por plataforma, melhor hora)' })
-  getSummary(@CurrentUser() user: AuthenticatedUser, @Query('month') month?: string) {
-    return this.earningsService.getSummary(user.sub, month);
+  @ApiOperation({ summary: 'Resumo de ganhos por período (today, week, month)' })
+  getSummary(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('period') period?: string,
+    @Query('month') month?: string,
+  ) {
+    return this.earningsService.getSummary(user.sub, period ?? 'month', month);
   }
 
   @Delete(':id')

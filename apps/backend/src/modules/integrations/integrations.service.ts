@@ -46,8 +46,12 @@ export class IntegrationsService {
       },
     });
 
-    // Trigger initial sync immediately
-    await this.enqueueSyncUser(userId, dto.platform);
+    // Trigger initial sync — non-fatal if queue (Redis) is unavailable
+    try {
+      await this.enqueueSyncUser(userId, dto.platform);
+    } catch {
+      // Credential saved; sync can be triggered manually when queue is available
+    }
 
     return { message: 'Plataforma conectada. Sync iniciado.' };
   }
