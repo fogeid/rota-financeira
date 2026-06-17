@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { costsMock } from '../services/mocks/costs.mock';
+import { costsService } from '../services/costsService';
 import type { CostItem, CostsSummary, CostType } from '../types/api';
 
 interface CostsStore {
@@ -22,8 +22,8 @@ export const useCostsStore = create<CostsStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const [listRes, summaryRes] = await Promise.all([
-        costsMock.list(),
-        costsMock.summary(),
+        costsService.list(),
+        costsService.summary(),
       ]);
       set({ items: listRes.data, summary: summaryRes, isLoading: false });
     } catch {
@@ -32,13 +32,13 @@ export const useCostsStore = create<CostsStore>((set, get) => ({
   },
 
   addCost: async (data) => {
-    const newItem = await costsMock.create(data);
+    const newItem = await costsService.create(data);
     set((s) => ({ items: [newItem, ...s.items] }));
     get().load();
   },
 
   removeCost: async (id) => {
-    await costsMock.remove(id);
+    await costsService.remove(id);
     set((s) => ({ items: s.items.filter((c) => c.id !== id) }));
   },
 }));
