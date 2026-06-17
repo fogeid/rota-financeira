@@ -1,4 +1,4 @@
-import { plainToInstance } from 'class-transformer';
+import { plainToInstance, Type } from 'class-transformer';
 import { IsEnum, IsNumber, IsOptional, IsString, MinLength, validateSync } from 'class-validator';
 
 enum NodeEnv {
@@ -12,6 +12,7 @@ class EnvironmentVariables {
   @IsEnum(NodeEnv)
   NODE_ENV: NodeEnv = NodeEnv.Development;
 
+  @Type(() => Number)
   @IsNumber()
   PORT = 3000;
 
@@ -46,6 +47,15 @@ class EnvironmentVariables {
   @IsString()
   @MinLength(32)
   HASH_SECRET!: string;
+
+  // Pagar.me — docs/05-SECURITY.md seção 7
+  @IsString()
+  @MinLength(16)
+  PAGARME_API_KEY!: string;
+
+  @IsString()
+  @MinLength(16)
+  PAGARME_WEBHOOK_SECRET!: string;
 
   // Firebase FCM — optional; push notifications disabled when absent
   @IsOptional()

@@ -39,7 +39,7 @@ Rota Financeira é um aplicativo mobile de gestão financeira exclusivo para mot
 | F04 | Senha | Mínimo 8 chars, 1 maiúscula, 1 número. Armazenado como hash bcrypt (custo 12) |
 | F05 | Verificação OTP | Código SMS válido por 5 minutos. Máximo 3 tentativas por código |
 | F06 | Reenvio OTP | Permitido após 60 segundos. Máximo 5 reenvios por sessão |
-| F07 | Cadastro do veículo | Modelo (texto, max 60 chars), ano (1990–2027), placa (AAA-0000 ou AAA0A00), consumo km/L (4–30) |
+| F07 | Cadastro do veículo | Modelo (texto, max 60 chars), ano (990–2027), placa (AAA-0000 ou AAA0A00), consumo km/L (4–30) |
 | F08 | Cadastro financiamento | Parcela mensal (R$ 100–10.000), dia vencimento (1–28), renda desejada (R$ 500–20.000), dias trabalho/mês (1–30) |
 | F09 | Conexão plataforma | Uber e/ou 99. Mínimo 1 obrigatória para avançar |
 | F10 | Tutorial onboarding | 4 telas fixas explicativas. Pode pular. Não repete após primeira vez |
@@ -175,13 +175,13 @@ Rota Financeira é um aplicativo mobile de gestão financeira exclusivo para mot
 |----|---------------|-----------|
 | F91 | Trial 14 dias | Pro completo ao cadastrar, sem cartão. Exibir countdown |
 | F92 | Tela de upgrade | Comparativo gratuito vs Pro. CTA "Assinar Pro" |
-| F93 | Pro Mensal R$ 19,90 | Recorrência mensal via Pagar.me |
-| F94 | Pro Anual R$ 159 | Cobrança única via Pagar.me |
+| F93 | Premium Mensal R$ 9,90 | Recorrência mensal via Pagar.me |
+| F94 | Premium Anual R$ 89 | Cobrança única via Pagar.me |
 | F95 | Cartão de crédito/débito | Tokenizado via Pagar.me. Número do cartão nunca no servidor |
 | F96 | PIX | Para plano anual. QR Code gerado via Pagar.me. Válido 30 min |
 | F97 | Renovação automática | Cobrança automática na data de renovação |
 | F98 | Falha no pagamento | 3 tentativas em 5 dias → downgrade automático para gratuito |
-| F99 | Cancelamento | Mantém acesso Pro até fim do período pago. Sem reembolso |
+| F99 | Cancelamento | Mantém acesso Premium até fim do período pago. Sem reembolso |
 | F100 | Recibo por e-mail | Enviado automaticamente após cobrança aprovada |
 | F101 | Reativação | Usuário cancelado pode reativar sem perder histórico |
 | F102 | Upgrade gratuito → Pro | Durante trial ou após expiração. Não cobra período já trial |
@@ -204,11 +204,15 @@ Rota Financeira é um aplicativo mobile de gestão financeira exclusivo para mot
 
 ## 16. Modelo de Receita
 
-| Plano | Preço | Restrições do gratuito |
-|-------|-------|------------------------|
-| Gratuito | R$ 0 | Histórico 7 dias, 1 plataforma, sem IR, sem PDF, alertas básicos (F65, F68, F72) |
-| Pro Mensal | R$ 19,90/mês | Sem restrições |
-| Pro Anual | R$ 159/ano | Sem restrições |
+**Filosofia:** Preço acessível para motoristas de aplicativo, que em sua maioria pertencem a classes C e D. O gratuito entrega valor real. O Premium entrega automação e inteligência.
+
+| Plano | Preço | O que inclui |
+|-------|-------|-------------|
+| Gratuito | R$ 0 | Controle manual, custos, metas, lucro diário |
+| Premium Mensal | R$ 9,90/mês | Tudo do gratuito + IA, integrações, PDF, IR, alertas, projeções, custo/km, planejamento de troca |
+| Premium Anual | R$ 89/ano | Igual Premium Mensal (desconto de ~25%) |
+
+**Trial:** 14 dias Premium gratuito para todos os novos cadastros. Sem cartão.
 
 ---
 
@@ -222,3 +226,47 @@ Rota Financeira é um aplicativo mobile de gestão financeira exclusivo para mot
 - [ ] PDF exportado e legível no device
 - [ ] Exclusão de conta remove todos os dados em até 30 dias
 - [ ] Credenciais de plataformas nunca aparecem em logs ou respostas de API
+
+---
+
+## 18. Programa de Indicação — Rota Indica
+
+### 18.1 Canal Motorista (Fase 1 — MVP)
+
+| ID | Funcionalidade | Descrição |
+|----|---------------|-----------|
+| R01 | Código único por usuário | Gerado automaticamente no cadastro (6 dígitos alfanuméricos). Ex: CARLOS22 |
+| R02 | Link de indicação | rotafinanceira.app/i/[CODIGO] — rastreia origem do cadastro |
+| R03 | Trial diferenciado | Indicado ganha 7 dias Premium (vs 14 dias padrão) |
+| R04 | Cashback nível Iniciante | R$ 5,00 por conversão (1–14 indicações convertidas) |
+| R05 | Cashback nível Parceiro | R$ 6,00 por conversão (15–29 indicações convertidas) |
+| R06 | Cashback nível Embaixador | R$ 7,00 por conversão (30+ indicações convertidas) |
+| R07 | Liberação do cashback | Apenas após webhook payment.paid confirmado pelo Pagar.me |
+| R08 | Saldo de cashback | Visível no app a qualquer momento |
+| R09 | Saque via PIX | Mínimo R$ 20,00. PIX processado em até 1 dia útil |
+| R10 | Tela Rota Indica | Saldo, código, link, lista de indicações com status, botão saque |
+| R11 | Status de indicação | Enviado / Cadastrado / Trial / Premium / Inativo |
+| R12 | Barra de progresso de nível | Visual do progresso para o próximo nível de cashback |
+| R13 | Anti-fraude CPF único | 1 CPF = 1 conta. Impossível indicar a si mesmo |
+
+### 18.2 Canal Influencer (Fase 2 — 60 dias após lançamento)
+
+| ID | Funcionalidade | Descrição |
+|----|---------------|-----------|
+| R14 | Cadastro de influencer | Formulário de parceria com aprovação manual pela equipe |
+| R15 | Link com slug personalizado | rotafinanceira.app/i/[nomecanal] |
+| R16 | Trial influencer | Indicados por influencer ganham 14 dias Premium |
+| R17 | Comissão recorrente micro | R$ 3,00/mês por assinante ativo (5k–30k seguidores) |
+| R18 | Comissão recorrente médio | R$ 4,00/mês por assinante ativo (30k–150k seguidores) |
+| R19 | Comissão recorrente grande | R$ 5,00/mês por assinante ativo (150k+ seguidores) |
+| R20 | Dashboard web influencer | Cliques, cadastros, assinantes ativos, comissão do mês, histórico |
+| R21 | Pagamento automático mensal | PIX automático todo dia 1 do mês |
+| R22 | Proteção D+30 | Comissão só paga 30 dias após o pagamento do assinante |
+| R23 | Monitoramento anti-fraude | Link com <1% de conversão em 30 dias é suspenso automaticamente |
+
+### 18.3 Fora do Escopo do Programa de Indicação
+
+- Cashback recorrente para motoristas (é sempre único por conversão)
+- Saque em formato diferente de PIX
+- Afiliados corporativos ou CNPJs
+- Qualquer bônus não listado acima

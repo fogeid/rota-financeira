@@ -7,7 +7,8 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // rawBody: true necessário para validação HMAC do webhook Pagar.me (docs/05-SECURITY.md seção 7)
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
   const config = app.get(ConfigService);
 
   // Tamanho máximo do body: 1MB — docs/04-API-SPEC.md "Regras Gerais da API"

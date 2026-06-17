@@ -225,10 +225,10 @@ Período importado: corridas dos últimos 2 dias (evita perder corridas do dia a
 ```
 Trial:
   - 14 dias a partir do cadastro
-  - Acesso completo ao plano Pro
+  - Acesso completo ao plano Premium
   - Sem necessidade de cartão
   - Alerta 3 dias antes de expirar (F76)
-  - Após expirar: downgrade automático para FREE
+  - Após expirar: downgrade automático para GRATUITO
 
 Plano Gratuito:
   - Histórico limitado a 7 dias (não exclui dados, apenas oculta)
@@ -236,7 +236,7 @@ Plano Gratuito:
   - Sem acesso a: relatório IR, exportar PDF, relatório anual
   - Alertas disponíveis: F65, F68, F72 apenas
 
-Plano Pro:
+Plano Premium:
   - Sem restrições de funcionalidade
   - Histórico completo
   - Todas as plataformas
@@ -245,12 +245,12 @@ Falha no pagamento:
   - D+0: primeira tentativa falha → alerta por push e e-mail
   - D+2: segunda tentativa
   - D+4: terceira tentativa
-  - D+5: downgrade para FREE, cancelar assinatura ativa
+  - D+5: downgrade para GRATUITO, cancelar assinatura ativa
   - Usuário pode reativar a qualquer momento sem perder histórico
 
 Cancelamento:
-  - Acesso Pro mantido até current_period_end
-  - Após: downgrade para FREE
+  - Acesso Premium mantido até current_period_end
+  - Após: downgrade para GRATUITO
   - Dados mantidos integralmente
   - Pode reativar a qualquer momento
 ```
@@ -267,3 +267,156 @@ Cancelamento:
 6. Uma plataforma só pode ter 1 credencial ativa por usuário por vez
 7. Refresh token só pode ser usado 1 vez (rotação obrigatória)
 8. CPF nunca aparece em logs, nunca é retornado pela API sem mascaramento
+
+---
+
+## 15. Divisão de Funcionalidades por Plano
+
+### Plano Gratuito — acesso sem restrição de dias ou volume
+
+| Funcionalidade | Disponível |
+|---------------|-----------|
+| Registro manual de corridas | ✅ Sim |
+| Registro de custos (todos os tipos) | ✅ Sim |
+| Meta diária (definida pelo usuário) | ✅ Sim |
+| Lucro diário básico | ✅ Sim |
+| Histórico completo | ✅ Sim |
+| Cadastro de veículo e financiamento | ✅ Sim |
+| Progresso da parcela (cálculo básico) | ✅ Sim |
+| Custo/km automático | ❌ Premium |
+| Sync automático Uber | ❌ Premium |
+| Sync automático 99 | ❌ Premium |
+| IA financeira e sugestões | ❌ Premium |
+| Alertas inteligentes (push) | ❌ Premium |
+| Relatórios em PDF | ❌ Premium |
+| Imposto de renda automático | ❌ Premium |
+| Reserva automática (cofrinhos) | ❌ Premium |
+| Projeções do próximo mês | ❌ Premium |
+| Planejamento de troca de veículo | ❌ Premium |
+
+### Plano Premium — R$ 9,90/mês ou R$ 89/ano
+
+Todas as funcionalidades do gratuito, mais todas as marcadas como Premium acima.
+
+### Lógica de bloqueio no app
+
+Quando usuário GRATUITO tenta acessar funcionalidade Premium:
+1. A tela/funcionalidade é visível (não escondida)
+2. Ao tentar usar: exibir bottom sheet de upgrade
+3. Mensagem: "Esta funcionalidade é do Plano Premium por R$ 9,90/mês"
+4. CTA: "Assinar Premium" + "Agora não"
+5. NUNCA bloquear: histórico, metas manuais, custos, lucro diário
+
+### Trial de 14 dias
+
+- Ativado automaticamente no cadastro
+- Acesso completo ao Premium sem cartão
+- Countdown visível no perfil
+- Alerta push 3 dias antes de expirar
+- Após expirar: downgrade automático para Gratuito (dados mantidos)
+
+
+---
+
+## 16. Regras de Negócio — Programa de Indicação
+
+### 16.1 Nível do indicador e cashback
+
+```
+Nível determinado por conversions (total de indicações convertidas em Premium):
+
+conversions 1–14  → INICIANTE  → cashback R$ 5,00
+conversions 15–29 → PARCEIRO   → cashback R$ 6,00
+conversions 30+   → EMBAIXADOR → cashback R$ 7,00
+
+O valor do cashback é determinado pelo nível DO MOMENTO DA CONVERSÃO.
+Se o usuário estava no nível Iniciante quando a conversão aconteceu,
+recebe R$ 5,00 — mesmo que suba de nível depois.
+```
+
+### 16.2 Fluxo de liberação do cashback
+
+```
+1. Webhook payment.paid chega do Pagar.me
+2. Backend verifica se o assinante veio por referral_code
+3. Se sim: busca o indicador pelo referral_code
+4. Calcula cashback conforme nível atual do indicador
+5. Incrementa referral_balance.pending += cashback_amount
+6. Incrementa referral_balance.total_earned += cashback_amount
+7. Incrementa referral_code.conversions += 1
+8. Atualiza referral.status = CONVERTED
+9. Job D+30: move pending → available
+10. Push notification: "R$ X,00 de cashback liberado!"
+```
+
+### 16.3 Trial do indicado
+
+```
+Usuário cadastra com código/link de indicação:
+- Código de motorista (type=USER): trial = 7 dias Premium
+- Link de influencer (type=INFLUENCER): trial = 14 dias Premium
+- Sem código: trial = 14 dias Premium (padrão)
+
+Verificação no cadastro:
+  SE referral_code fornecido:
+    buscar ReferralCode pelo code ou slug
+    SE encontrado E ativo:
+      criar Referral com status=REGISTERED
+      incrementar ReferralCode.clicks
+      aplicar trial conforme tipo
+    SE não encontrado: ignorar, aplicar trial padrão
+```
+
+### 16.4 Regras de saque
+
+```
+Condições para saque:
+  balance.available >= 20.00
+
+Processamento:
+  1. Criar ReferralWithdrawal com status=PENDING
+  2. Decrementar balance.available -= amount
+  3. Incrementar balance.total_withdrawn += amount
+  4. Processar PIX via Pagar.me em até 1 dia útil
+  5. Atualizar status para PAID ou FAILED
+  6. SE FAILED: devolver saldo (available += amount)
+
+Revisão manual automática:
+  SE count(withdrawals no mês) > 10: flaggar para revisão antes de processar
+```
+
+### 16.5 Comissão de influencers
+
+```
+Calculada mensalmente no dia 1 de cada mês:
+  active_subscribers = count de assinantes Premium ativos
+                       que chegaram pelo link deste influencer
+
+  commission = active_subscribers × commission_rate
+
+  commission_rate por tier:
+    MICRO:     R$ 3,00/assinante ativo
+    MEDIUM:    R$ 4,00/assinante ativo
+    LARGE:     R$ 5,00/assinante ativo
+    EXCLUSIVE: negociado
+
+Pagamento:
+  - Criado com status=PENDING no dia 1
+  - Pago via PIX automático no dia 1 (após D+30 do último pagamento do mês)
+  - SE nenhum assinante ativo: comissão = R$ 0,00 (não paga)
+
+Suspensão automática do link:
+  SE clicks > 100 E (conversions / clicks) < 0.01 em 30 dias:
+    InfluencerProfile.status = SUSPENDED
+    notificar equipe para revisão
+```
+
+### 16.6 Invariantes do programa (NUNCA violar)
+
+1. Cashback só liberado após `payment.paid` confirmado — nunca antes
+2. Um usuário não pode ser indicado por si mesmo (validar user_id != referrer user_id)
+3. Um usuário só pode ter 1 código de indicação (unique em user_id)
+4. Um usuário indicado só conta uma vez (unique em referred_user_id)
+5. Saldo nunca fica negativo (validar antes de decrementar)
+6. Comissão de influencer só sobre assinantes ATIVOS no mês de referência
+7. Link de influencer suspenso não gera comissão nem trial diferenciado

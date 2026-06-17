@@ -31,7 +31,7 @@ model User {
   phone             String             // Criptografado AES-256
   phone_hash        String    @unique  // SHA-256 do telefone. Usado para lookup
   password_hash     String             // bcrypt custo 12
-  plan              Plan      @default(FREE)
+  plan              Plan      @default(GRATUITO)
   trial_ends_at     DateTime?          // null após trial expirado
   plan_expires_at   DateTime?          // Para planos pagos
   is_active         Boolean   @default(true)
@@ -58,7 +58,7 @@ model User {
 }
 
 enum Plan {
-  FREE
+  GRATUITO
   PRO
 }
 
@@ -126,7 +126,7 @@ model Vehicle {
   id                String    @id @default(uuid())
   user_id           String    @unique
   model             String             // Ex: "Chevrolet Onix 2024"
-  year              Int                // 1990–2027
+  year              Int                // 990–2027
   plate             String             // Formato AAA-0000 ou AAA0A00
   fuel_efficiency   Decimal   @db.Decimal(5,2)  // km/L (ex: 12.40)
   created_at        DateTime  @default(now())
@@ -361,7 +361,7 @@ model Subscription {
   status              SubscriptionStatus @default(ACTIVE)
   pagarme_sub_id      String?            @unique  // ID da assinatura no Pagar.me
   pagarme_customer_id String?
-  amount_cents        Int                          // Valor em centavos
+  amount_cents        Int                          // 990 (mensal) ou 8900 (anual) em centavos
   current_period_start DateTime
   current_period_end  DateTime
   canceled_at         DateTime?
@@ -463,3 +463,141 @@ CREATE INDEX idx_login_attempts_cpf_time ON login_attempts(cpf_hash, created_at 
 | encrypted_data (plataformas) | AES-256-GCM com chave por usuário |
 | token_hash (refresh) | SHA-256 do token. Token real só vai ao client |
 | code_hash (OTP) | SHA-256 do código. Código real só vai via SMS |
+
+
+// ─────────────────────────────────────────
+// PROGRAMA DE INDICAÇÃO
+// ─────────────────────────────────────────
+
+model ReferralCode {
+  id          String    @id @default(uuid())
+  user_id     String    @unique
+  code        String    @unique  // 6 dígitos alfanuméricos. Ex: CARLOS22
+  slug        String?   @unique  // Para influencers. Ex: zemoto
+  type        ReferralType @default(USER)
+  clicks      Int       @default(0)
+  created_at  DateTime  @default(now())
+
+  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  referrals   Referral[]
+
+  @@map("referral_codes")
+}
+
+enum ReferralType {
+  USER        // Motorista comum
+  INFLUENCER  // Criador de conteúdo aprovado
+}
+
+model Referral {
+  id                  String         @id @default(uuid())
+  referral_code_id    String
+  referred_user_id    String         @unique
+  status              ReferralStatus @default(REGISTERED)
+  cashback_amount     Decimal?       @db.Decimal(6,2)  // Valor a pagar ao indicador
+  cashback_paid_at    DateTime?
+  converted_at        DateTime?      // Quando virou Premium
+  created_at          DateTime       @default(now())
+  updated_at          DateTime       @updatedAt
+
+  referral_code       ReferralCode   @relation(fields: [referral_code_id], references: [id])
+  referred_user       User           @relation("ReferredUser", fields: [referred_user_id], references: [id])
+
+  @@index([referral_code_id])
+  @@map("referrals")
+}
+
+enum ReferralStatus {
+  REGISTERED    // Cadastrou pelo link
+  TRIAL         // Está no trial de 7 dias
+  CONVERTED     // Assinou Premium — cashback liberado
+  INACTIVE      // Cancelou sem assinar
+}
+
+model ReferralBalance {
+  id              String    @id @default(uuid())
+  user_id         String    @unique
+  available       Decimal   @db.Decimal(10,2) @default(0)  // Saldo disponível para saque
+  pending         Decimal   @db.Decimal(10,2) @default(0)  // Aguardando D+30
+  total_earned    Decimal   @db.Decimal(10,2) @default(0)  // Total histórico ganho
+  total_withdrawn Decimal   @db.Decimal(10,2) @default(0)  // Total sacado
+  conversions     Int       @default(0)  // Total de indicações convertidas (define o nível)
+  updated_at      DateTime  @updatedAt
+
+  user            User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("referral_balances")
+}
+
+model ReferralWithdrawal {
+  id          String             @id @default(uuid())
+  user_id     String
+  amount      Decimal            @db.Decimal(10,2)
+  pix_key     String             // Chave PIX do usuário
+  status      WithdrawalStatus   @default(PENDING)
+  processed_at DateTime?
+  created_at  DateTime           @default(now())
+
+  user        User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("referral_withdrawals")
+}
+
+enum WithdrawalStatus {
+  PENDING     // Aguardando processamento
+  PAID        // PIX enviado
+  FAILED      // Falha no PIX
+}
+
+model InfluencerProfile {
+  id              String              @id @default(uuid())
+  user_id         String              @unique
+  channel_name    String
+  channel_url     String
+  followers       Int
+  niche           String
+  tier            InfluencerTier
+  status          InfluencerStatus    @default(PENDING)
+  commission_rate Decimal             @db.Decimal(4,2)  // R$ por assinante ativo/mês
+  bonus_threshold Int?                // Qtd assinantes para bônus de entrada
+  bonus_amount    Decimal?            @db.Decimal(8,2)
+  approved_at     DateTime?
+  contract_signed_at DateTime?
+  created_at      DateTime            @default(now())
+
+  user            User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  commissions     InfluencerCommission[]
+
+  @@map("influencer_profiles")
+}
+
+enum InfluencerTier {
+  MICRO     // 5k–30k seguidores — R$ 3,00/mês
+  MEDIUM    // 30k–150k — R$ 4,00/mês
+  LARGE     // 150k+ — R$ 5,00/mês
+  EXCLUSIVE // Negociado individualmente
+}
+
+enum InfluencerStatus {
+  PENDING   // Aguardando aprovação
+  APPROVED  // Aprovado, link ativo
+  SUSPENDED // Link suspenso (baixa conversão ou fraude)
+  REJECTED  // Reprovado
+}
+
+model InfluencerCommission {
+  id                  String    @id @default(uuid())
+  influencer_id       String
+  reference_month     DateTime  @db.Date
+  active_subscribers  Int
+  commission_amount   Decimal   @db.Decimal(10,2)
+  status              WithdrawalStatus @default(PENDING)
+  paid_at             DateTime?
+  created_at          DateTime  @default(now())
+
+  influencer          InfluencerProfile @relation(fields: [influencer_id], references: [id])
+
+  @@unique([influencer_id, reference_month])
+  @@map("influencer_commissions")
+}
