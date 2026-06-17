@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { notificationsMock } from '../services/mocks/notifications.mock';
+import { notificationsService } from '../services/notificationsService';
 import type { NotificationItem } from '../types/api';
 
 interface NotificationsStore {
@@ -21,10 +21,10 @@ export const useNotificationsStore = create<NotificationsStore>((set) => ({
   load: async () => {
     set({ isLoading: true, error: null });
     try {
-      const res = await notificationsMock.list();
+      const res = await notificationsService.list();
       set({
         items: res.data,
-        unreadCount: notificationsMock.unreadCount(),
+        unreadCount: res.data.filter((n) => !n.is_read).length,
         isLoading: false,
       });
     } catch {
@@ -33,7 +33,7 @@ export const useNotificationsStore = create<NotificationsStore>((set) => ({
   },
 
   markRead: async (id) => {
-    await notificationsMock.markRead(id);
+    await notificationsService.markRead(id);
     set((s) => ({
       items: s.items.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
       unreadCount: Math.max(0, s.unreadCount - 1),
@@ -41,7 +41,7 @@ export const useNotificationsStore = create<NotificationsStore>((set) => ({
   },
 
   markAllRead: async () => {
-    await notificationsMock.markAllRead();
+    await notificationsService.markAllRead();
     set((s) => ({
       items: s.items.map((n) => ({ ...n, is_read: true })),
       unreadCount: 0,
