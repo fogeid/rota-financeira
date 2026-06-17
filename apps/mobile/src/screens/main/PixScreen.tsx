@@ -49,7 +49,10 @@ export function PixScreen({ route, navigation }: Props) {
       timerRef.current = setInterval(() => {
         const remaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
         setSecondsLeft(remaining);
-        if (remaining === 0) clearInterval(timerRef.current!);
+        if (remaining === 0) {
+          clearInterval(timerRef.current!);
+          if (pollRef.current) clearInterval(pollRef.current);
+        }
       }, 1000);
 
       // Poll payment status every 5s

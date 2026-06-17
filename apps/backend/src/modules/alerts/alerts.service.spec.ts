@@ -43,8 +43,9 @@ describe('AlertsService', () => {
     jest.clearAllMocks();
     // Default: alert enabled (no pref row = enabled)
     mockPrisma.alertPreference.findUnique.mockResolvedValue(null);
-    // Default: no cooldown
+    // Default: no cooldown, and NX set succeeds
     mockRedis.exists.mockResolvedValue(0);
+    mockRedis.set.mockResolvedValue('OK');
 
     service = new AlertsService(
       mockPrisma as never,
@@ -82,6 +83,7 @@ describe('AlertsService', () => {
         '1',
         'EX',
         86_400,
+        'NX',
       );
 
       jest.restoreAllMocks();
@@ -158,6 +160,7 @@ describe('AlertsService', () => {
         '1',
         'EX',
         3 * 86_400,
+        'NX',
       );
 
       jest.restoreAllMocks();
@@ -248,6 +251,7 @@ describe('AlertsService', () => {
         '1',
         'EX',
         7 * 86_400,
+        'NX',
       );
     });
 

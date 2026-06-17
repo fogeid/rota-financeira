@@ -8,8 +8,10 @@ import {
 } from '../../components';
 import { useFinancingStore } from '../../store/financingStore';
 import { earningsService } from '../../services/earningsService';
+import { vehiclesService } from '../../services/vehiclesService';
 import { formatCurrency } from '../../utils/formatters';
 import type { EarningItem } from '../../types/api';
+import type { VehicleData } from '../../services/vehiclesService';
 
 const DAYS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
@@ -43,11 +45,13 @@ const HEALTH_ALERT: Record<string, { variant: 'green' | 'amber' | 'red'; text: s
 export function MeuCarroScreen() {
   const { data, progress, isLoading, error, load } = useFinancingStore();
   const [weekEarnings, setWeekEarnings] = useState<EarningItem[]>([]);
+  const [vehicle, setVehicle] = useState<VehicleData | null>(null);
 
   useEffect(() => {
     load();
     const thisMonth = new Date().toISOString().slice(0, 7);
     earningsService.list({ month: thisMonth }).then((res) => setWeekEarnings(res.data)).catch(() => {});
+    vehiclesService.getVehicle().then(setVehicle).catch(() => {});
   }, []);
 
   const progressColor =
@@ -78,8 +82,10 @@ export function MeuCarroScreen() {
             <Ionicons name="car" size={22} color={colors.green} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.vehicleModel}>Chevrolet Onix 2024</Text>
-            <Text style={styles.vehiclePlate}>ABC-1D23</Text>
+            <Text style={styles.vehicleModel}>
+              {vehicle ? `${vehicle.model} ${vehicle.year}` : 'Veículo não cadastrado'}
+            </Text>
+            <Text style={styles.vehiclePlate}>{vehicle?.plate ?? '—'}</Text>
           </View>
           <View style={styles.vehicleBadge}>
             <Text style={styles.vehicleBadgeText}>Financiado</Text>

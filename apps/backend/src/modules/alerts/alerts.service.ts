@@ -57,12 +57,14 @@ export class AlertsService {
     return pref?.enabled !== false;
   }
 
-  private async setCooldown(key: string, ttlSeconds: number): Promise<void> {
-    await this.redis.set(key, '1', 'EX', ttlSeconds);
-  }
-
   private async hasCooldown(key: string): Promise<boolean> {
     return (await this.redis.exists(key)) === 1;
+  }
+
+  /** Atomically sets the cooldown key (SET NX EX). Returns true if acquired (no prior cooldown). */
+  private async acquireCooldown(key: string, ttlSeconds: number): Promise<boolean> {
+    const result = await this.redis.set(key, '1', 'EX', ttlSeconds, 'NX');
+    return result === 'OK';
   }
 
   // ─── F65 — Meta batida ───────────────────────────────────────────────────────
@@ -108,7 +110,7 @@ export class AlertsService {
     const dailyGoal = Number(goal.daily_goal as Decimal);
 
     if (dailyNet >= dailyGoal) {
-      await this.setCooldown(cooldownKey, 86_400); // 24h
+      if (!(await this.acquireCooldown(cooldownKey, 86_400))) return;
       await this.notifications.create(userId, {
         type: NotificationType.GOAL_REACHED,
         title: 'Meta diária atingida! 🎯',
@@ -192,7 +194,7 @@ export class AlertsService {
     const installment = Number(financing.monthly_installment as Decimal);
 
     if (projection < installment) {
-      await this.setCooldown(cooldownKey, 3 * 86_400); // 3 days
+      if (!(await this.acquireCooldown(cooldownKey, 3 * 86_400))) return;
       await this.notifications.create(userId, {
         type: NotificationType.BELOW_PACE,
         title: 'Você está abaixo do ritmo',
@@ -251,7 +253,7 @@ export class AlertsService {
     const deficit = installment - accumulated;
 
     if (deficit > 0) {
-      await this.setCooldown(cooldownKey, 86_400); // 1 day
+      if (!(await this.acquireCooldown(cooldownKey, 86_400))) return;
       await this.notifications.create(userId, {
         type: NotificationType.INSTALLMENT_AT_RISK,
         title: 'Parcela em risco!',
@@ -287,7 +289,7 @@ export class AlertsService {
     const avg3m = monthlyKmCosts.reduce((s, v) => s + v, 0) / monthlyKmCosts.length;
 
     if (currentCostPerKm > avg3m * 1.10) {
-      await this.setCooldown(cooldownKey, 7 * 86_400); // 7 days
+      if (!(await this.acquireCooldown(cooldownKey, 7 * 86_400))) return;
       await this.notifications.create(userId, {
         type: NotificationType.HIGH_COST_PER_KM,
         title: 'Custo/km alto',
