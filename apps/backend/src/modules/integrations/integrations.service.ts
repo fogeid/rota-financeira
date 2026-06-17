@@ -12,8 +12,7 @@ import { Queue } from 'bullmq';
 import { EncryptionService } from '../../common/services/encryption.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConnectIntegrationDto } from './dto/connect-integration.dto';
-import { PLATFORM_SYNC_QUEUE } from './integrations.constants';
-import { JOB_SYNC_USER } from './workers/platform-sync.processor';
+import { JOB_SYNC_USER, PLATFORM_SYNC_QUEUE } from './integrations.constants';
 
 // Retry delays: 5min, 15min, 45min (docs/06-BUSINESS-RULES.md seção 12)
 export const SYNC_RETRY_DELAYS_MS = [5 * 60_000, 15 * 60_000, 45 * 60_000];

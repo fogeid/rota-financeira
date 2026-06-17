@@ -4,11 +4,10 @@ import { EarningOrigin, Platform, SyncStatus } from '@prisma/client';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AlertsService } from '../../alerts/alerts.service';
-import { PLATFORM_SYNC_QUEUE } from '../integrations.constants';
+import { JOB_SYNC_DISPATCH, JOB_SYNC_USER, PLATFORM_SYNC_QUEUE } from '../integrations.constants';
 import { IntegrationsService, SYNC_RETRY_DELAYS_MS } from '../integrations.service';
 
-export const JOB_SYNC_DISPATCH = 'sync-dispatch';
-export const JOB_SYNC_USER = 'sync-user';
+export { JOB_SYNC_DISPATCH, JOB_SYNC_USER };
 
 interface SyncUserJobData {
   userId: string;

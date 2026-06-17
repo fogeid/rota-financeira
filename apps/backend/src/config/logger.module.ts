@@ -32,6 +32,6 @@ import * as winston from 'winston';
       useExisting: WINSTON_MODULE_NEST_PROVIDER,
     },
   ],
-  exports: ['LOGGER', WINSTON_MODULE_NEST_PROVIDER],
+  exports: ['LOGGER', WinstonModule],
 })
 export class LoggerModule {}

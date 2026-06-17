@@ -45,7 +45,7 @@ Verifica OTP e ativa a conta. Retorna tokens após verificação bem-sucedida.
 {
   "access_token": "eyJ...",
   "refresh_token": "eyJ...",
-  "user": { "id": "uuid", "name": "Carlos Souza", "plan": "PRO", "trial_ends_at": "2026-06-29T00:00:00Z" }
+  "user": { "id": "uuid", "name": "Carlos Souza", "plan": "PREMIUM", "trial_ends_at": "2026-06-29T00:00:00Z" }
 }
 ```
 **Erros:** 400 Código inválido | 400 Código expirado | 429 Muitas tentativas
@@ -119,7 +119,7 @@ Retorna dados do usuário autenticado.
   "email": "c***@email.com",
   "phone": "+55119****8888",
   "cpf": "***.456.***-**",
-  "plan": "PRO",
+  "plan": "PREMIUM",
   "trial_ends_at": "2026-06-29T00:00:00Z",
   "plan_expires_at": null,
   "biometry_enabled": true,
@@ -586,8 +586,8 @@ Lista os planos disponíveis. [público]
 {
   "plans": [
     { "id": "free", "name": "Gratuito", "price_cents": 0, "features": ["7 dias histórico", "1 plataforma"] },
-    { "id": "pro_monthly", "name": "Pro Mensal", "price_cents": 1990, "billing_cycle": "MONTHLY", "features": ["Tudo incluso"] },
-    { "id": "pro_yearly", "name": "Pro Anual", "price_cents": 15900, "billing_cycle": "YEARLY", "features": ["Tudo incluso", "33% desconto"] }
+    
+    
   ]
 }
 ```
@@ -600,11 +600,11 @@ Retorna assinatura atual do usuário.
 **Resposta 200:**
 ```json
 {
-  "plan": "PRO",
+  "plan": "PREMIUM",
   "status": "ACTIVE",
   "billing_cycle": "MONTHLY",
   "current_period_end": "2026-07-15T00:00:00Z",
-  "amount_cents": 1990,
+  "amount_cents": 990,
   "trial_ends_at": null
 }
 ```
@@ -617,7 +617,7 @@ Assina um plano. Dados do cartão tokenizados pelo Pagar.me no frontend.
 **Body:**
 ```json
 {
-  "plan_id": "pro_monthly",
+  "plan_id": "premium_monthly",
   "payment_method": "CREDIT_CARD",
   "card_token": "tok_xxxxxxxx"
 }
@@ -630,20 +630,20 @@ Assina um plano. Dados do cartão tokenizados pelo Pagar.me no frontend.
 ### POST /subscriptions/subscribe-pix
 Assina plano anual via PIX.
 
-**Body:** `{ "plan_id": "pro_yearly" }`
+**Body:** `{ "plan_id": "premium_yearly" }`
 **Resposta 201:**
 ```json
-{ "qr_code": "00020126...", "qr_code_url": "https://...", "expires_at": "2026-06-15T11:00:00Z", "amount_cents": 15900 }
+{ "qr_code": "00020126...", "qr_code_url": "https://...", "expires_at": "2026-06-15T11:00:00Z", "amount_cents": 890 }
 ```
 
 ---
 
 ### DELETE /subscriptions/me
-Cancela a assinatura. Acesso Pro mantido até fim do período.
+Cancela a assinatura. Acesso Premium mantido até fim do período.
 
 **Resposta 200:**
 ```json
-{ "message": "Assinatura cancelada. Acesso Pro mantido até 2026-07-15.", "access_until": "2026-07-15T00:00:00Z" }
+{ "message": "Assinatura cancelada. Acesso Premium mantido até 2026-07-15.", "access_until": "2026-07-15T00:00:00Z" }
 ```
 
 ---
@@ -673,3 +673,150 @@ Recebe eventos do Pagar.me. Autenticação via header `X-Pagarme-Signature`.
 | Timeout | 30 segundos |
 | Versão da API | /v1 — breaking changes criam nova versão |
 | Paginação padrão | page=1, limit=20, max limit=100 |
+
+
+---
+
+## MÓDULO: REFERRAL (Indicação)
+
+### GET /referral/me
+Retorna código, link, saldo e indicações do usuário.
+
+**Resposta 200:**
+```json
+{
+  "code": "CARLOS22",
+  "link": "https://rotafinanceira.app/i/CARLOS22",
+  "level": "INICIANTE",
+  "conversions": 3,
+  "next_level_at": 15,
+  "balance": {
+    "available": 15.00,
+    "pending": 5.00,
+    "total_earned": 20.00,
+    "total_withdrawn": 0.00
+  },
+  "referrals": [
+    { "name": "João S.", "status": "CONVERTED", "converted_at": "2026-06-10T00:00:00Z" },
+    { "name": "Maria C.", "status": "TRIAL", "converted_at": null },
+    { "name": "Pedro A.", "status": "CONVERTED", "converted_at": "2026-06-08T00:00:00Z" }
+  ]
+}
+```
+
+---
+
+### POST /referral/withdraw
+Solicita saque do saldo de cashback via PIX.
+
+**Body:**
+```json
+{ "pix_key": "11999998888", "amount": 20.00 }
+```
+**Resposta 201:**
+```json
+{ "message": "Saque solicitado. PIX será enviado em até 1 dia útil.", "withdrawal_id": "uuid" }
+```
+**Erros:** 400 Saldo insuficiente (mínimo R$ 20,00) | 400 Chave PIX inválida
+
+---
+
+### GET /referral/withdrawals
+Histórico de saques do usuário.
+
+**Resposta 200:**
+```json
+{
+  "withdrawals": [
+    { "id": "uuid", "amount": 20.00, "status": "PAID", "paid_at": "2026-06-12T00:00:00Z" }
+  ]
+}
+```
+
+---
+
+### GET /referral/validate/:code [público]
+Valida se um código de indicação existe antes do cadastro.
+
+**Resposta 200:** `{ "valid": true, "referrer_name": "Carlos" }`
+**Resposta 404:** `{ "valid": false }`
+
+---
+
+## MÓDULO: INFLUENCER (Fase 2)
+
+### POST /influencer/apply [público]
+Solicita parceria como influencer.
+
+**Body:**
+```json
+{
+  "name": "Zé Motorista",
+  "email": "ze@canal.com",
+  "channel_name": "Canal do Zé Motorista",
+  "channel_url": "https://youtube.com/@zemoto",
+  "followers": 85000,
+  "niche": "Motoristas de aplicativo e finanças"
+}
+```
+**Resposta 201:** `{ "message": "Solicitação recebida. Retornaremos em até 3 dias úteis." }`
+
+---
+
+### GET /influencer/dashboard
+Dashboard do influencer autenticado. Acesso apenas para influencers aprovados.
+
+**Resposta 200:**
+```json
+{
+  "channel_name": "Canal do Zé Motorista",
+  "link": "https://rotafinanceira.app/i/zemoto",
+  "tier": "MEDIUM",
+  "commission_rate": 4.00,
+  "current_month": {
+    "clicks": 1240,
+    "registrations": 186,
+    "active_subscribers": 94,
+    "commission": 376.00
+  },
+  "history": [
+    { "month": "2026-05", "active_subscribers": 82, "commission": 328.00, "status": "PAID" },
+    { "month": "2026-04", "active_subscribers": 61, "commission": 244.00, "status": "PAID" }
+  ],
+  "total_earned": 1100.00,
+  "next_payment_date": "2026-07-01",
+  "conversion_rate": 7.6,
+  "subscriber_retention": 81.0
+}
+```
+
+---
+
+### Regras de negócio do módulo Referral
+
+```
+Nível do usuário:
+  INICIANTE:  conversions 1–14  → cashback R$ 5,00 por conversão
+  PARCEIRO:   conversions 15–29 → cashback R$ 6,00 por conversão
+  EMBAIXADOR: conversions 30+   → cashback R$ 7,00 por conversão
+
+Valor do cashback determinado pelo nível NO MOMENTO da conversão.
+
+Liberação do cashback:
+  1. Webhook payment.paid recebido do Pagar.me
+  2. Verificar se assinante veio por código de indicação
+  3. Calcular cashback conforme nível atual do indicador
+  4. Adicionar ao balance.pending do indicador
+  5. Após D+30: mover de pending para available
+
+Trial do indicado:
+  - Código de motorista: 7 dias Premium
+  - Link de influencer: 14 dias Premium
+  - Aplicado no momento do cadastro, verificando referral_code no body
+
+Saque:
+  - Mínimo: R$ 20,00
+  - Método: PIX (chave informada pelo usuário)
+  - Prazo: até 1 dia útil
+  - Revisão manual automática: usuário com >10 saques no mesmo mês
+```
