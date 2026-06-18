@@ -4,6 +4,7 @@ import {
   HttpStatus,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Platform, SyncStatus } from '@prisma/client';
@@ -81,7 +82,11 @@ export class IntegrationsService {
       throw new HttpException('Sync já em andamento para esta plataforma', HttpStatus.TOO_MANY_REQUESTS);
     }
 
-    await this.enqueueSyncUser(userId, platform);
+    try {
+      await this.enqueueSyncUser(userId, platform);
+    } catch {
+      throw new ServiceUnavailableException('Fila de sync indisponível. Verifique se o Redis está rodando.');
+    }
     return { message: 'Sync iniciado. Você será notificado quando concluir.' };
   }
 
