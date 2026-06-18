@@ -36,11 +36,20 @@ import { REDIS_CLIENT, RedisModule } from './redis/redis.module';
     RedisModule,
     CommonModule,
     // BullMQ — fila de sync de plataformas e engine de alertas
+    // maxRetriesPerRequest: null é obrigatório pelo BullMQ (blocking commands).
+    // Usa opções planas para evitar conflito de tipos entre versões do ioredis.
     BullModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        connection: { url: config.getOrThrow<string>('REDIS_URL') },
-      }),
+      useFactory: (config: ConfigService) => {
+        const redisUrl = new URL(config.getOrThrow<string>('REDIS_URL'));
+        return {
+          connection: {
+            host: redisUrl.hostname,
+            port: parseInt(redisUrl.port || '6379', 10),
+            maxRetriesPerRequest: null,
+          },
+        };
+      },
     }),
     // Rate limiting — docs/05-SECURITY.md seção 5:
     // 100 req/min por IP (anônimo) e 300 req/min por usuário autenticado
