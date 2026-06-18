@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { EarningOrigin } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { firstDayOfMonth, lastDayOfMonth } from '../../common/utils/financial-calculations';
@@ -53,6 +53,20 @@ export class EarningsService {
   }
 
   async create(userId: string, dto: CreateEarningDto) {
+    // Se external_id fornecido: verificar duplicata antes de criar (409 = já existe)
+    if (dto.external_id) {
+      const exists = await this.prisma.earning.findUnique({
+        where: {
+          user_id_platform_external_id: {
+            user_id: userId,
+            platform: dto.platform,
+            external_id: dto.external_id,
+          },
+        },
+      });
+      if (exists) throw new ConflictException('Corrida já registrada (external_id duplicado)');
+    }
+
     return this.prisma.earning.create({
       data: {
         user_id: userId,
@@ -61,7 +75,8 @@ export class EarningsService {
         km_driven: dto.km_driven ?? null,
         started_at: new Date(dto.started_at),
         earned_at: new Date(dto.earned_at),
-        origin: EarningOrigin.MANUAL,
+        origin: dto.external_id ? EarningOrigin.AUTO_SYNC : EarningOrigin.MANUAL,
+        external_id: dto.external_id ?? null,
       },
     });
   }

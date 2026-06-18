@@ -12,7 +12,7 @@ export const earningsService = {
     return data;
   },
 
-  async create(payload: { platform: string; amount: number; km_driven: number; started_at: string; earned_at: string }): Promise<EarningItem> {
+  async create(payload: { platform: string; amount: number; km_driven?: number; started_at: string; earned_at: string; external_id?: string }): Promise<EarningItem> {
     const { data } = await api.post<EarningItem>('/earnings', payload);
     return data;
   },

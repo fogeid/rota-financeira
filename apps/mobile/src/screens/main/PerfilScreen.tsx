@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, Modal,
-  TextInput, Alert, ActivityIndicator, Linking,
+  Alert, ActivityIndicator, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -12,6 +12,8 @@ import { useAuthStore } from '../../store/authStore';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
 import { useFinancingStore } from '../../store/financingStore';
 import { integrationsService } from '../../services/integrationsService';
+import { NotificationPermissionScreen } from '../permissions/NotificationPermissionScreen';
+import { NotificationListener } from '../../../../modules/notification-listener/src';
 import { usersService } from '../../services/usersService';
 import { vehiclesService } from '../../services/vehiclesService';
 import { alertsService } from '../../services/alertsService';
@@ -332,39 +334,33 @@ function ConnectPlatformModal({
   onClose: () => void;
   onSuccess: (platform: 'UBER' | 'NOVENTA_E_NOVE') => void;
 }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const label = platform ? PLATFORM_LABEL[platform] : '';
 
   function handleClose() {
-    setEmail(''); setPassword(''); setError(null);
+    setError(null);
     onClose();
   }
 
   async function handleConnect() {
     if (!platform) return;
-    if (!email.trim() || !password) { setError('Preencha e-mail e senha.'); return; }
     setLoading(true);
     setError(null);
     try {
-      await integrationsService.connect(platform, { email: email.trim(), password });
+      await integrationsService.connect(platform, {});
       handleClose();
       onSuccess(platform);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 409) {
-        // Already connected — close modal and reflect as connected in UI
         handleClose();
         onSuccess(platform);
-      } else if (status === 400) {
-        setError('Dados inválidos. Verifique o e-mail e tente novamente.');
       } else if (status === 401) {
         setError('Sessão expirada. Faça login novamente.');
       } else if (!status) {
-        setError('Não foi possível conectar ao servidor. Verifique se o backend está rodando e o EXPO_PUBLIC_API_URL.');
+        setError('Não foi possível conectar ao servidor. Verifique o EXPO_PUBLIC_API_URL.');
       } else {
         setError(`Erro ${status}. Tente novamente.`);
       }
@@ -381,25 +377,28 @@ function ConnectPlatformModal({
             <Text style={modal.title}>Conectar {label}</Text>
             <TouchableOpacity onPress={handleClose}><Ionicons name="close" size={22} color={colors.text2} /></TouchableOpacity>
           </View>
+
           {error && <AlertBox variant="red" message={error} style={{ marginBottom: 8 }} />}
-          <Text style={modal.label}>E-mail da conta {label}</Text>
-          <TextInput
-            style={modal.input} value={email} onChangeText={setEmail}
-            keyboardType="email-address" autoCapitalize="none" autoComplete="email"
-            placeholder="seu@email.com" placeholderTextColor={colors.text3}
+
+          <AlertBox
+            variant="blue"
+            message={
+              `Vamos capturar suas corridas automaticamente através das notificações ` +
+              `do ${label === 'Uber' ? 'Uber Driver' : '99 para Motoristas'}.\n\n` +
+              `Não precisamos da sua senha — apenas que o app esteja instalado no seu celular.`
+            }
+            style={{ marginBottom: 16 }}
           />
-          <Text style={modal.label}>Senha</Text>
-          <TextInput
-            style={modal.input} value={password} onChangeText={setPassword}
-            secureTextEntry placeholder="Sua senha" placeholderTextColor={colors.text3}
-          />
-          <Text style={[typography.small, { color: colors.text3, marginTop: 8, textAlign: 'center' }]}>
-            Suas credenciais são criptografadas e nunca compartilhadas.
-          </Text>
-          <TouchableOpacity style={[modal.saveBtn, loading && { opacity: 0.6 }]} onPress={handleConnect} disabled={loading} activeOpacity={0.85}>
+
+          <TouchableOpacity
+            style={[modal.saveBtn, loading && { opacity: 0.6 }]}
+            onPress={handleConnect}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
             {loading
-              ? <><ActivityIndicator color={colors.bg} size="small" style={{ marginRight: 8 }} /><Text style={modal.saveBtnText}>Verificando...</Text></>
-              : <Text style={modal.saveBtnText}>Conectar</Text>
+              ? <><ActivityIndicator color={colors.bg} size="small" style={{ marginRight: 8 }} /><Text style={modal.saveBtnText}>Conectando...</Text></>
+              : <Text style={modal.saveBtnText}>Conectar {label}</Text>
             }
           </TouchableOpacity>
         </View>
@@ -727,6 +726,7 @@ export function PerfilScreen() {
   const [editProfileVisible, setEditProfileVisible] = useState(false);
   const [changePasswordVisible, setChangePasswordVisible] = useState(false);
   const [changePhoneVisible, setChangePhoneVisible] = useState(false);
+  const [notifPermissionVisible, setNotifPermissionVisible] = useState(false);
 
   const reloadIntegrations = useCallback(() => {
     integrationsService.status().then((res) => setPlatforms(res.integrations)).catch(() => {});
@@ -781,8 +781,11 @@ export function PerfilScreen() {
 
   function handleConnectSuccess(platform: 'UBER' | 'NOVENTA_E_NOVE') {
     reloadIntegrations();
-    // Dispara sync imediato; HomeScreen detecta RUNNING/SUCCESS via polling
     integrationsService.triggerSync(platform).catch(() => {});
+    // Oferecer permissão de notificação se ainda não concedida
+    if (!NotificationListener.isPermissionGranted()) {
+      setNotifPermissionVisible(true);
+    }
   }
 
   function getAlertEnabled(type: string): boolean {
@@ -1000,6 +1003,16 @@ export function PerfilScreen() {
         onClose={() => setConnectPlatform(null)}
         onSuccess={handleConnectSuccess}
       />
+      <Modal
+        visible={notifPermissionVisible}
+        animationType="slide"
+        onRequestClose={() => setNotifPermissionVisible(false)}
+      >
+        <NotificationPermissionScreen
+          onGranted={() => setNotifPermissionVisible(false)}
+          onSkip={() => setNotifPermissionVisible(false)}
+        />
+      </Modal>
       <EditProfileModal visible={editProfileVisible} onClose={() => setEditProfileVisible(false)} />
       <ChangePasswordModal visible={changePasswordVisible} onClose={() => setChangePasswordVisible(false)} />
       <ChangePhoneModal visible={changePhoneVisible} onClose={() => setChangePhoneVisible(false)} />

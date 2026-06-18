@@ -35,7 +35,7 @@ export class IntegrationsService {
     }
 
     // Encrypt credentials with user-derived key (HKDF) — docs/05-SECURITY.md seção 3
-    const encryptedData = this.encryptCredentials(dto.credentials, userId);
+    const encryptedData = this.encryptCredentials(dto.credentials ?? {}, userId);
 
     await this.prisma.platformCredential.create({
       data: {
