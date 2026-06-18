@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Header, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, HttpCode, HttpStatus, Param, ParseEnumPipe, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Platform } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -31,7 +31,7 @@ export class IntegrationsController {
   @ApiOperation({ summary: 'Força sync manual de uma plataforma' })
   triggerSync(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('platform') platform: Platform,
+    @Param('platform', new ParseEnumPipe(Platform)) platform: Platform,
   ) {
     return this.integrationsService.triggerManualSync(user.sub, platform);
   }
@@ -41,7 +41,7 @@ export class IntegrationsController {
   @ApiOperation({ summary: 'Desconecta uma plataforma e remove as credenciais imediatamente' })
   disconnect(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('platform') platform: Platform,
+    @Param('platform', new ParseEnumPipe(Platform)) platform: Platform,
   ) {
     return this.integrationsService.disconnect(user.sub, platform);
   }
