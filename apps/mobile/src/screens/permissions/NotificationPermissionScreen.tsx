@@ -5,7 +5,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../../theme';
 import { AlertBox, ConfirmButton } from '../../components';
-import { NotificationListener } from '../../../../modules/notification-listener/src';
+import { NotificationListener } from '../../../modules/notification-listener/src';
 
 interface Props {
   onGranted: () => void;

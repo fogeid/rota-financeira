@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { NotificationListener } from '../../../modules/notification-listener/src';
+import { NotificationListener } from '../../modules/notification-listener/src';
 import { parseUberNotification } from '../utils/uberNotificationParser';
 import { earningsService } from '../services/earningsService';
 import { useEarningsStore } from '../store/earningsStore';
