@@ -265,7 +265,7 @@ export function HomeScreen() {
   // Polling a cada 5s quando alguma integração está RUNNING ou NEVER
   const integrations = data?.integrations ?? [];
   const needsPolling = integrations.some(
-    (s) => s.last_sync_status === 'RUNNING' || (s.is_active && s.last_sync_status === 'NEVER')
+    (s) => s.last_sync_status === 'IN_PROGRESS' || (s.is_active && s.last_sync_status === 'NEVER')
   );
 
   useEffect(() => {
@@ -393,7 +393,7 @@ export function HomeScreen() {
                 sub={syncLabel(s)}
                 isLast={i === data.integrations.length - 1}
                 right={
-                  s.last_sync_status === 'RUNNING' ? (
+                  s.last_sync_status === 'IN_PROGRESS' ? (
                     <ActivityIndicator size="small" color={colors.green} />
                   ) : s.last_sync_status === 'FAILED' ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

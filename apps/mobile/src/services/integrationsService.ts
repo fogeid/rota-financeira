@@ -3,7 +3,10 @@ import type { IntegrationsResponse } from '../types/api';
 
 export const integrationsService = {
   async status(): Promise<IntegrationsResponse> {
-    const { data } = await api.get<IntegrationsResponse>('/integrations/status');
+    const { data } = await api.get<IntegrationsResponse>('/integrations/status', {
+      headers: { 'Cache-Control': 'no-cache' },
+      params: { _t: Date.now() },
+    });
     return data;
   },
 
