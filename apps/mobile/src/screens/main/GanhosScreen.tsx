@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   Modal, KeyboardAvoidingView, Platform, Alert,
@@ -17,7 +17,7 @@ import {
 import { useEarningsStore } from '../../store/earningsStore';
 import { earningsService } from '../../services/earningsService';
 import { formatCurrency } from '../../utils/formatters';
-import type { EarningItem } from '../../types/api';
+import type { EarningItem, EarningsSummary } from '../../types/api';
 
 type Period = 'today' | 'week' | 'month';
 
@@ -85,17 +85,45 @@ export function GanhosScreen() {
   const { items, summary, period, isLoading, error, load, setPeriod, addEarning } = useEarningsStore();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState('UBER');
-  const [monthlyGross, setMonthlyGross] = useState<number | null>(null);
+
+  // Fixed summaries — loaded once on mount, do NOT change when the filter tab changes
+  const [todaySummary, setTodaySummary] = useState<EarningsSummary | null>(null);
+  const [weekSummary, setWeekSummary] = useState<EarningsSummary | null>(null);
+  const [monthSummary, setMonthSummary] = useState<EarningsSummary | null>(null);
+  const [summariesLoading, setSummariesLoading] = useState(true);
+  const summariesLoaded = useRef(false);
 
   const { control, handleSubmit, reset, formState: { errors } } = useForm<TripForm>({
     resolver: zodResolver(tripSchema),
     defaultValues: { platform: 'UBER', amount: '', km_driven: '' },
   });
 
+  const loadSummaries = useCallback(() => {
+    setSummariesLoading(true);
+    void Promise.allSettled([
+      earningsService.summary('today'),
+      earningsService.summary('week'),
+      earningsService.summary('month'),
+    ]).then(([todayRes, weekRes, monthRes]) => {
+      if (todayRes.status === 'fulfilled') setTodaySummary(todayRes.value);
+      if (weekRes.status === 'fulfilled') setWeekSummary(weekRes.value);
+      if (monthRes.status === 'fulfilled') setMonthSummary(monthRes.value);
+      setSummariesLoading(false);
+    });
+  }, []);
+
+  // Load fixed summaries once on first mount
+  useEffect(() => {
+    if (!summariesLoaded.current) {
+      summariesLoaded.current = true;
+      loadSummaries();
+    }
+  }, [loadSummaries]);
+
+  // Reload filtered list every time the screen gets focus
   useFocusEffect(
     useCallback(() => {
       load();
-      earningsService.summary('month').then((s) => setMonthlyGross(s.gross_total)).catch(() => {});
     }, [load])
   );
 
@@ -111,7 +139,8 @@ export function GanhosScreen() {
       });
       reset();
       setModalVisible(false);
-      earningsService.summary('month').then((s) => setMonthlyGross(s.gross_total)).catch(() => {});
+      // Reload fixed summaries so today's card reflects the new earning
+      loadSummaries();
     } catch {
       Alert.alert('Erro', 'Não foi possível registrar a corrida. Tente novamente.');
     }
@@ -122,33 +151,41 @@ export function GanhosScreen() {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         {error ? <AlertBox variant="red" message={error} style={{ marginBottom: spacing.md }} /> : null}
 
-        {isLoading || !summary ? (
+        {summariesLoading || !todaySummary ? (
           <SkeletonHeroCard />
         ) : (
           <HeroCard
             label="Total bruto hoje"
-            value={formatCurrency(summary.gross_total)}
-            sub={`${summary.trips_count} corridas · ${summary.days_worked} dia(s) trabalhado(s)`}
+            value={formatCurrency(todaySummary.gross_total)}
+            sub={`${todaySummary.trips_count} corridas · ${todaySummary.days_worked} dia(s) trabalhado(s)`}
             variant="positive"
           />
         )}
 
-        {isLoading || !summary ? (
+        {summariesLoading || !todaySummary ? (
           <SkeletonMetricGrid />
         ) : (
           <MetricGrid>
             <MetricCard
               label="Semana"
-              value={formatCurrency(summary.gross_total * 5)}
-              sub="Total estimado"
+              value={formatCurrency(weekSummary?.gross_total ?? 0)}
+              sub="Acumulado"
             />
-            <MetricCard label="Mês" value={monthlyGross !== null ? formatCurrency(monthlyGross) : '—'} sub="Acumulado" />
+            <MetricCard
+              label="Mês"
+              value={formatCurrency(monthSummary?.gross_total ?? 0)}
+              sub="Acumulado"
+            />
             <MetricCard
               label="Melhor horário"
-              value={summary.best_hour ? `${summary.best_hour}–${String(parseInt(summary.best_hour) + 1).padStart(2, '0')}h` : '—'}
+              value={
+                monthSummary?.best_hour
+                  ? `${monthSummary.best_hour}–${String(parseInt(monthSummary.best_hour) + 1).padStart(2, '0')}h`
+                  : '—'
+              }
               sub="Últimos 30 dias"
             />
-            <MetricCard label="Corridas hoje" value={String(summary.trips_count)} sub="Total" />
+            <MetricCard label="Corridas hoje" value={String(todaySummary.trips_count)} sub="Total" />
           </MetricGrid>
         )}
 

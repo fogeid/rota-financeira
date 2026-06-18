@@ -107,36 +107,66 @@ export class PlatformSyncProcessor extends WorkerHost {
   /**
    * Stub: simulates platform API response with realistic trip data.
    * Replace with real API client per platform when SDKs are available.
-   * Returns 3–8 trips/day for the last 7 days to cover day-boundary gaps.
+   * Returns 3–8 trips/day for the last 7 days with:
+   *   - started_at always in the past (today capped at now.getHours()-1)
+   *   - earned_at at local noon to keep the calendar date stable across UTC offsets
    */
   private async fetchTripsFromPlatform(
     platform: Platform,
     _credentials: Record<string, string>,
     userSlug: string,
   ): Promise<PlatformTrip[]> {
-    // Simulate network latency
     await new Promise((r) => setTimeout(r, 2000 + Math.random() * 1000));
 
     const now = new Date();
     const trips: PlatformTrip[] = [];
 
-    for (let day = 0; day < 7; day++) {
-      const tripsPerDay = Math.floor(Math.random() * 6) + 3;
+    for (let daysAgo = 0; daysAgo < 7; daysAgo++) {
+      // Build day date using local constructor so getDate()/getMonth() reflect local calendar
+      const ref = new Date(now);
+      ref.setDate(ref.getDate() - daysAgo);
+      const dayDate = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+
+      // For today, only generate trips that have already happened
+      const maxHour = daysAgo === 0 ? now.getHours() - 1 : 22;
+
+      // Skip today if it's before 8am (no valid trip window)
+      if (maxHour < 7) continue;
+
+      const tripsPerDay = Math.floor(Math.random() * 5) + 3;
+      const usedHours = new Set<number>();
+
       for (let i = 0; i < tripsPerDay; i++) {
-        const tripDate = new Date(now);
-        tripDate.setDate(tripDate.getDate() - day);
-        tripDate.setHours(7 + Math.floor(Math.random() * 14), Math.floor(Math.random() * 60), 0, 0);
+        const range = maxHour - 7;
+        if (range < 1) break;
 
-        const earnedAt = new Date(tripDate);
-        earnedAt.setHours(0, 0, 0, 0);
+        let hour: number;
+        let attempts = 0;
+        do {
+          hour = 7 + Math.floor(Math.random() * range);
+          attempts++;
+        } while (usedHours.has(hour) && attempts < 20);
+        if (usedHours.has(hour)) continue;
+        usedHours.add(hour);
 
-        // Deterministic ID prevents duplicates across multiple syncs for the same user+day+trip
-        const dateStr = earnedAt.toISOString().slice(0, 10);
+        const minute = Math.floor(Math.random() * 60);
+        const startedAt = new Date(dayDate);
+        startedAt.setHours(hour, minute, 0, 0);
+
+        // noon keeps the calendar date stable for any UTC offset within ±11h
+        const earnedAt = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), 12, 0, 0, 0);
+
+        // Build local date string to keep deterministic IDs consistent regardless of UTC offset
+        const y = dayDate.getFullYear();
+        const m = String(dayDate.getMonth() + 1).padStart(2, '0');
+        const d = String(dayDate.getDate()).padStart(2, '0');
+        const dateStr = `${y}-${m}-${d}`;
+
         trips.push({
           externalId: `${platform.toLowerCase()}_stub_${userSlug}_${dateStr}_${i}`,
-          amount: parseFloat((Math.random() * 45 + 8).toFixed(2)),
-          kmDriven: parseFloat((Math.random() * 18 + 2).toFixed(1)),
-          startedAt: tripDate,
+          amount: parseFloat((Math.random() * 42 + 8).toFixed(2)),
+          kmDriven: parseFloat((Math.random() * 17 + 3).toFixed(1)),
+          startedAt,
           earnedAt,
         });
       }

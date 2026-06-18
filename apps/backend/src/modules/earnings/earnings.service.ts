@@ -72,15 +72,14 @@ export class EarningsService {
     let end: Date;
 
     if (period === 'today') {
-      // earned_at is stored as UTC midnight, so match the UTC date range
-      const todayStr = now.toISOString().slice(0, 10);
-      start = new Date(`${todayStr}T00:00:00.000Z`);
-      end = new Date(`${todayStr}T23:59:59.999Z`);
+      // Use local constructor so the day boundary matches the server's local timezone
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
     } else if (period === 'week') {
-      const todayStr = now.toISOString().slice(0, 10);
-      end = new Date(`${todayStr}T23:59:59.999Z`);
-      const sixDaysAgo = new Date(now.getTime() - 6 * 86_400_000);
-      start = new Date(`${sixDaysAgo.toISOString().slice(0, 10)}T00:00:00.000Z`);
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const sixDaysAgo = new Date(now);
+      sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
+      start = new Date(sixDaysAgo.getFullYear(), sixDaysAgo.getMonth(), sixDaysAgo.getDate(), 0, 0, 0, 0);
     } else {
       const refDate = month ? new Date(`${month}-01`) : now;
       start = firstDayOfMonth(refDate);
