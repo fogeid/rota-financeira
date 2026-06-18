@@ -46,7 +46,7 @@ export const useEarningsStore = create<EarningsStore>((set, get) => ({
         earningsService.list(periodToDate(p)),
         earningsService.summary(p),
       ]);
-      set({ items: listRes.data, summary: summaryRes, isLoading: false });
+      set({ items: listRes?.data ?? [], summary: summaryRes, isLoading: false });
     } catch {
       set({ error: 'Erro ao carregar ganhos.', isLoading: false });
     }
