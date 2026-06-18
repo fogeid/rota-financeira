@@ -781,6 +781,8 @@ export function PerfilScreen() {
 
   function handleConnectSuccess(platform: 'UBER' | 'NOVENTA_E_NOVE') {
     reloadIntegrations();
+    // Dispara sync imediato; HomeScreen detecta RUNNING/SUCCESS via polling
+    integrationsService.triggerSync(platform).catch(() => {});
   }
 
   function getAlertEnabled(type: string): boolean {
