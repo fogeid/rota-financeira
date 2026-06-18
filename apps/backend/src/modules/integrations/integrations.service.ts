@@ -118,7 +118,7 @@ export class IntegrationsService {
         backoff: { type: 'custom' },
         removeOnComplete: true,
         removeOnFail: false,
-        jobId: `sync-user:${userId}:${platform}:${Date.now()}`,
+        jobId: `sync-user_${userId}_${platform}_${Date.now()}`,
       },
     );
   }
