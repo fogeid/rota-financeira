@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal,
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
@@ -13,10 +13,12 @@ import {
   ListItem, Badge, SkeletonHeroCard, SkeletonMetricGrid,
   FormInput, Chip, ConfirmButton,
 } from '../../components';
+import { useFocusEffect } from '@react-navigation/native';
 import { useHomeStore } from '../../store/homeStore';
 import { useEarningsStore } from '../../store/earningsStore';
 import { useCostsStore } from '../../store/costsStore';
 import { useAuthStore } from '../../store/authStore';
+import { integrationsService } from '../../services/integrationsService';
 import { formatCurrency } from '../../utils/formatters';
 import type { IntegrationStatus, CostType } from '../../types/api';
 
@@ -248,14 +250,49 @@ function RegisterCostModal({ visible, onClose, onSuccess }: {
 // ─── Main Screen ───────────────────────────────────────────────────────────
 
 export function HomeScreen() {
-  const { data, isLoading, error, load } = useHomeStore();
+  const { data, isLoading, error, load, refreshIntegrations } = useHomeStore();
   const user = useAuthStore((s) => s.user);
   const [earningModalVisible, setEarningModalVisible] = useState(false);
   const [costModalVisible, setCostModalVisible] = useState(false);
 
+  // Recarrega ao focar na tela (inclui retorno do Perfil após conectar plataforma)
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  // Polling a cada 5s quando alguma integração está RUNNING ou NEVER
+  const integrations = data?.integrations ?? [];
+  const needsPolling = integrations.some(
+    (s) => s.last_sync_status === 'RUNNING' || (s.is_active && s.last_sync_status === 'NEVER')
+  );
+
   useEffect(() => {
-    load();
-  }, []);
+    if (!needsPolling) return;
+
+    const id = setInterval(async () => {
+      const before = useHomeStore.getState().data?.integrations ?? [];
+      await refreshIntegrations();
+      const after = useHomeStore.getState().data?.integrations ?? [];
+      const hadNewSuccess = after.some((s) => {
+        const prev = before.find((p) => p.platform === s.platform);
+        return s.last_sync_status === 'SUCCESS' && prev?.last_sync_status !== 'SUCCESS';
+      });
+      if (hadNewSuccess) load();
+    }, 5000);
+
+    return () => clearInterval(id);
+  }, [needsPolling]);
+
+  async function handleRetrySync(platform: string) {
+    try {
+      await integrationsService.triggerSync(platform);
+      await refreshIntegrations();
+    } catch {
+      Alert.alert('Erro', 'Não foi possível reiniciar o sync. Tente novamente.');
+    }
+  }
 
   function handleEarningSuccess(amount: number) {
     setEarningModalVisible(false);
@@ -356,10 +393,24 @@ export function HomeScreen() {
                 sub={syncLabel(s)}
                 isLast={i === data.integrations.length - 1}
                 right={
-                  <Badge
-                    variant={s.last_sync_status === 'SUCCESS' ? 'green' : s.last_sync_status === 'RUNNING' ? 'blue' : s.last_sync_status === 'NEVER' ? 'amber' : 'red'}
-                    label={s.last_sync_status === 'SUCCESS' ? 'Ativo' : s.last_sync_status === 'RUNNING' ? 'Sync...' : s.last_sync_status === 'NEVER' ? 'Aguardando' : 'Falhou'}
-                  />
+                  s.last_sync_status === 'RUNNING' ? (
+                    <ActivityIndicator size="small" color={colors.green} />
+                  ) : s.last_sync_status === 'FAILED' ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Badge variant="red" label="Falhou" />
+                      <TouchableOpacity
+                        onPress={() => handleRetrySync(s.platform)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="refresh-outline" size={18} color={colors.green} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <Badge
+                      variant={s.last_sync_status === 'SUCCESS' ? 'green' : 'amber'}
+                      label={s.last_sync_status === 'SUCCESS' ? 'Ativo' : 'Aguardando'}
+                    />
+                  )
                 }
               />
             ))

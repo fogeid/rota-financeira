@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   Modal, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
@@ -91,10 +92,12 @@ export function GanhosScreen() {
     defaultValues: { platform: 'UBER', amount: '', km_driven: '' },
   });
 
-  useEffect(() => {
-    load();
-    earningsService.summary('month').then((s) => setMonthlyGross(s.gross_total)).catch(() => {});
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+      earningsService.summary('month').then((s) => setMonthlyGross(s.gross_total)).catch(() => {});
+    }, [load])
+  );
 
   async function onSubmit(data: TripForm) {
     const now = new Date().toISOString();

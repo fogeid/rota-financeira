@@ -4,7 +4,7 @@ import { earningsService } from '../services/earningsService';
 import { costsService } from '../services/costsService';
 import { integrationsService } from '../services/integrationsService';
 import { taxesService } from '../services/taxesService';
-import type { HomeData, EarningItem } from '../types/api';
+import type { HomeData, EarningItem, IntegrationStatus } from '../types/api';
 
 const DAYS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
@@ -34,12 +34,25 @@ interface HomeStore {
   isLoading: boolean;
   error: string | null;
   load: () => Promise<void>;
+  refreshIntegrations: () => Promise<IntegrationStatus[]>;
 }
 
-export const useHomeStore = create<HomeStore>((set) => ({
+export const useHomeStore = create<HomeStore>((set, get) => ({
   data: null,
   isLoading: false,
   error: null,
+
+  refreshIntegrations: async () => {
+    try {
+      const response = await integrationsService.status();
+      set((state) => ({
+        data: state.data ? { ...state.data, integrations: response.integrations } : state.data,
+      }));
+      return response.integrations;
+    } catch {
+      return get().data?.integrations ?? [];
+    }
+  },
 
   load: async () => {
     set({ isLoading: true, error: null });
