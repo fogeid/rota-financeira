@@ -224,7 +224,7 @@ export function CustosScreen() {
           <HeroCard
             label="Total custos do mês"
             value={`- ${formatCurrency(summary.total)}`}
-            sub={`${formatCurrency(summary.km_driven)} km · custo/km: R$ ${summary.cost_per_km.toFixed(2).replace('.', ',')}`}
+            sub={`${(summary.km_driven ?? 0).toLocaleString('pt-BR')} km · custo/km: R$ ${(summary.cost_per_km ?? 0).toFixed(2).replace('.', ',')}`}
             variant="negative"
           />
         )}
