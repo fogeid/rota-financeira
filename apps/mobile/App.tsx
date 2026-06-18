@@ -16,11 +16,13 @@ import {
 } from '@expo-google-fonts/space-grotesk';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { useAuthStore } from './src/store/authStore';
+import { useNotificationListener } from './src/hooks/useNotificationListener';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize);
+  useNotificationListener();
 
   const [fontsLoaded] = useFonts({
     Inter: Inter_400Regular,

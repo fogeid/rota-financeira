@@ -1,14 +1,15 @@
 import { Platform } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsEmail, IsEnum, IsNotEmpty, IsString, ValidateNested } from 'class-validator';
+import { IsEmail, IsEnum, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 class PlatformCredentialsDto {
+  @IsOptional()
   @IsEmail()
-  email!: string;
+  email?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  password!: string;
+  password?: string;
 }
 
 export class ConnectIntegrationDto {
@@ -17,7 +18,9 @@ export class ConnectIntegrationDto {
   })
   platform!: Platform;
 
+  @IsOptional()
+  @IsObject()
   @ValidateNested()
   @Type(() => PlatformCredentialsDto)
-  credentials!: PlatformCredentialsDto;
+  credentials?: PlatformCredentialsDto;
 }
