@@ -92,7 +92,7 @@ export interface CostByType {
 export interface CostsSummary {
   month: string;
   total: number;
-  cost_per_km: number;
+  cost_per_km: number | null;
   km_driven: number;
   by_type: Partial<Record<CostType, CostByType>>;
   alert?: { type: string; message: string };
@@ -226,7 +226,7 @@ export interface HomeData {
   installment: number;
   days_until_due: number;
   estimated_tax: number;
-  cost_per_km: number;
+  cost_per_km: number | null;
   week_data: WeekDay[];
   alerts: Array<{ variant: 'green' | 'amber' | 'red' | 'blue'; message: string }>;
   integrations: IntegrationStatus[];
