@@ -1,0 +1,18 @@
+#!/bin/sh
+# Bloqueia push direto para main/master — use uma branch feature/* ou fix/* e abra um PR.
+current=$(git rev-parse --abbrev-ref HEAD)
+
+case "$current" in
+  main|master)
+    echo ""
+    echo "  BLOQUEADO: push direto para '$current' não é permitido."
+    echo "  Crie uma branch e abra um PR:"
+    echo ""
+    echo "    git checkout -b fix/minha-correcao"
+    echo "    git push -u origin fix/minha-correcao"
+    echo "    gh pr create"
+    echo ""
+    exit 1
+    ;;
+esac
+exit 0
