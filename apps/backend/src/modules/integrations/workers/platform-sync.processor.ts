@@ -63,6 +63,7 @@ export class PlatformSyncProcessor extends WorkerHost {
   /** Sync a single user's platform — decrypt credentials, import trips, deduplicate. */
   private async syncUserPlatform(job: Job<SyncUserJobData>): Promise<void> {
     const { userId, platform } = job.data;
+    const userSlug = userId.slice(0, 8);
 
     const credential = await this.prisma.platformCredential.findUnique({
       where: { user_id_platform: { user_id: userId, platform } },
@@ -79,8 +80,8 @@ export class PlatformSyncProcessor extends WorkerHost {
     const _credentials = this.integrationsService.decryptCredentials(credential.encrypted_data, userId);
     void _credentials; // Used by platform client (stub — API not yet implemented)
 
-    // Import trips from last 2 days — docs/06-BUSINESS-RULES.md seção 12
-    const trips = await this.fetchTripsFromPlatform(platform, _credentials);
+    // Import trips from last 7 days — docs/06-BUSINESS-RULES.md seção 12
+    const trips = await this.fetchTripsFromPlatform(platform, _credentials, userSlug);
 
     let imported = 0;
     for (const trip of trips) {
@@ -104,17 +105,44 @@ export class PlatformSyncProcessor extends WorkerHost {
   }
 
   /**
-   * Stub: fetches trips from the platform API.
-   * Replace with real API client per platform.
-   * Returns trips from the last 2 days to avoid missing day-boundary trips.
+   * Stub: simulates platform API response with realistic trip data.
+   * Replace with real API client per platform when SDKs are available.
+   * Returns 3–8 trips/day for the last 7 days to cover day-boundary gaps.
    */
   private async fetchTripsFromPlatform(
-    _platform: Platform,
+    platform: Platform,
     _credentials: Record<string, string>,
+    userSlug: string,
   ): Promise<PlatformTrip[]> {
-    // Real implementation would call Uber/99/iFood driver API here.
-    // Returning empty array until platform SDKs are available.
-    return [];
+    // Simulate network latency
+    await new Promise((r) => setTimeout(r, 2000 + Math.random() * 1000));
+
+    const now = new Date();
+    const trips: PlatformTrip[] = [];
+
+    for (let day = 0; day < 7; day++) {
+      const tripsPerDay = Math.floor(Math.random() * 6) + 3;
+      for (let i = 0; i < tripsPerDay; i++) {
+        const tripDate = new Date(now);
+        tripDate.setDate(tripDate.getDate() - day);
+        tripDate.setHours(7 + Math.floor(Math.random() * 14), Math.floor(Math.random() * 60), 0, 0);
+
+        const earnedAt = new Date(tripDate);
+        earnedAt.setHours(0, 0, 0, 0);
+
+        // Deterministic ID prevents duplicates across multiple syncs for the same user+day+trip
+        const dateStr = earnedAt.toISOString().slice(0, 10);
+        trips.push({
+          externalId: `${platform.toLowerCase()}_stub_${userSlug}_${dateStr}_${i}`,
+          amount: parseFloat((Math.random() * 45 + 8).toFixed(2)),
+          kmDriven: parseFloat((Math.random() * 18 + 2).toFixed(1)),
+          startedAt: tripDate,
+          earnedAt,
+        });
+      }
+    }
+
+    return trips;
   }
 
   /**

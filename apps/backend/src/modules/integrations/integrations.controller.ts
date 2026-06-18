@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Platform } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -19,6 +19,8 @@ export class IntegrationsController {
   }
 
   @Get('status')
+  @Header('Cache-Control', 'no-store, no-cache, must-revalidate')
+  @Header('Pragma', 'no-cache')
   @ApiOperation({ summary: 'Status de todas as plataformas conectadas' })
   getStatus(@CurrentUser() user: AuthenticatedUser) {
     return this.integrationsService.getStatus(user.sub);

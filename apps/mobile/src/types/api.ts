@@ -175,7 +175,7 @@ export interface NotificationsResponse {
 
 // ─── Integrations ────────────────────────────────────────────────────────────
 
-export type SyncStatus = 'SUCCESS' | 'FAILED' | 'RUNNING' | 'NEVER';
+export type SyncStatus = 'SUCCESS' | 'FAILED' | 'IN_PROGRESS' | 'NEVER';
 
 export interface IntegrationStatus {
   platform: Platform;
