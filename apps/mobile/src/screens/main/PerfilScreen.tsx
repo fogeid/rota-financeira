@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, Modal,
-  Alert, ActivityIndicator, Linking,
+  TextInput, Alert, ActivityIndicator, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -13,7 +13,7 @@ import { useSubscriptionStore } from '../../store/subscriptionStore';
 import { useFinancingStore } from '../../store/financingStore';
 import { integrationsService } from '../../services/integrationsService';
 import { NotificationPermissionScreen } from '../permissions/NotificationPermissionScreen';
-import { NotificationListener } from '../../../../modules/notification-listener/src';
+import { NotificationListener } from '../../../modules/notification-listener/src';
 import { usersService } from '../../services/usersService';
 import { vehiclesService } from '../../services/vehiclesService';
 import { alertsService } from '../../services/alertsService';
