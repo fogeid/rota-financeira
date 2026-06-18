@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CostType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
@@ -18,20 +18,11 @@ export class CostsService {
   ) {}
 
   async create(userId: string, dto: CreateCostDto) {
-    if (dto.type === CostType.FUEL) {
-      if (!dto.gas_station || dto.liters == null || dto.price_per_liter == null || dto.odometer_km == null) {
-        throw new BadRequestException(
-          'Para type=FUEL, campos obrigatórios: gas_station, liters, price_per_liter, odometer_km',
-        );
-      }
-    }
-    if (dto.type === CostType.MAINTENANCE) {
-      if (!dto.service_type || dto.current_odometer_km == null) {
-        throw new BadRequestException(
-          'Para type=MAINTENANCE, campos obrigatórios: service_type, current_odometer_km',
-        );
-      }
-    }
+    const hasFuelDetails = dto.type === CostType.FUEL &&
+      (dto.gas_station != null || dto.liters != null || dto.price_per_liter != null || dto.odometer_km != null);
+
+    const hasMaintenanceDetails = dto.type === CostType.MAINTENANCE &&
+      (dto.service_type != null || dto.current_odometer_km != null);
 
     const cost = await this.prisma.cost.create({
       data: {
@@ -40,21 +31,21 @@ export class CostsService {
         amount: dto.amount,
         description: dto.description,
         cost_date: new Date(dto.cost_date),
-        ...(dto.type === CostType.FUEL && {
+        ...(hasFuelDetails && {
           fuel_log: {
             create: {
-              gas_station: dto.gas_station!,
-              liters: dto.liters!,
-              price_per_liter: dto.price_per_liter!,
-              odometer_km: dto.odometer_km!,
+              gas_station: dto.gas_station ?? '',
+              liters: dto.liters ?? 0,
+              price_per_liter: dto.price_per_liter ?? 0,
+              odometer_km: dto.odometer_km ?? 0,
             },
           },
         }),
-        ...(dto.type === CostType.MAINTENANCE && {
+        ...(hasMaintenanceDetails && {
           maintenance: {
             create: {
-              service_type: dto.service_type!,
-              current_odometer_km: dto.current_odometer_km!,
+              service_type: dto.service_type ?? dto.description ?? 'Manutenção',
+              current_odometer_km: dto.current_odometer_km ?? 0,
               next_service_km: dto.next_service_km ?? null,
               reminder_enabled: dto.reminder_enabled ?? false,
             },

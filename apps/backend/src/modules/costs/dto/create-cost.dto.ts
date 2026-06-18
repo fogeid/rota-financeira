@@ -10,7 +10,6 @@ import {
   IsString,
   MaxLength,
   Min,
-  ValidateIf,
 } from 'class-validator';
 
 export class CreateCostDto {
@@ -33,40 +32,40 @@ export class CreateCostDto {
   @IsDateString()
   cost_date!: string;
 
-  // ── FuelLog (obrigatório quando type === FUEL) ──
+  // ── FuelLog (opcional — detalha o abastecimento quando type === FUEL) ──
   @ApiPropertyOptional({ example: 'Posto Ipiranga Centro' })
-  @ValidateIf((o: CreateCostDto) => o.type === CostType.FUEL)
+  @IsOptional()
   @IsString()
   @MaxLength(120)
   gas_station?: string;
 
   @ApiPropertyOptional({ example: 40.5, description: 'Litros abastecidos' })
-  @ValidateIf((o: CreateCostDto) => o.type === CostType.FUEL)
+  @IsOptional()
   @IsNumber()
   @IsPositive()
   liters?: number;
 
   @ApiPropertyOptional({ example: 5.89, description: 'Preço por litro (R$)' })
-  @ValidateIf((o: CreateCostDto) => o.type === CostType.FUEL)
+  @IsOptional()
   @IsNumber()
   @IsPositive()
   price_per_liter?: number;
 
   @ApiPropertyOptional({ example: 54320, description: 'Odômetro em km' })
-  @ValidateIf((o: CreateCostDto) => o.type === CostType.FUEL)
+  @IsOptional()
   @IsNumber()
   @Min(0)
   odometer_km?: number;
 
-  // ── MaintenanceLog (obrigatório quando type === MAINTENANCE) ──
+  // ── MaintenanceLog (opcional — detalha a manutenção quando type === MAINTENANCE) ──
   @ApiPropertyOptional({ example: 'Troca de óleo', maxLength: 100 })
-  @ValidateIf((o: CreateCostDto) => o.type === CostType.MAINTENANCE)
+  @IsOptional()
   @IsString()
   @MaxLength(100)
   service_type?: string;
 
   @ApiPropertyOptional({ example: 54320 })
-  @ValidateIf((o: CreateCostDto) => o.type === CostType.MAINTENANCE)
+  @IsOptional()
   @IsNumber()
   @Min(0)
   current_odometer_km?: number;
