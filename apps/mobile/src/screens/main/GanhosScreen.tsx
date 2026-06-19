@@ -3,8 +3,11 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   Modal, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import type { MainStackParamList } from '../../navigation/MainStack';
+import { integrationsService } from '../../services/integrationsService';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +20,7 @@ import {
 import { useEarningsStore } from '../../store/earningsStore';
 import { earningsService } from '../../services/earningsService';
 import { formatCurrency } from '../../utils/formatters';
+import { toNumber } from '../../utils/numbers';
 import type { EarningItem } from '../../types/api';
 
 type Period = 'today' | 'week' | 'month';
@@ -60,7 +64,7 @@ function EarningListItem({ item, isLast }: { item: EarningItem; isLast: boolean 
         </View>
       }
       name={`${PLATFORM_LABEL[item.platform] ?? item.platform} · ${time}`}
-      sub={`${item.km_driven.toFixed(1)} km · ${item.origin === 'MANUAL' ? 'Manual' : 'Sync'}`}
+      sub={`${toNumber(item.km_driven).toFixed(1)} km · ${item.origin === 'MANUAL' ? 'Manual' : 'Sync'}`}
       value={formatCurrency(item.amount)}
       valueColor={colors.green}
       isLast={isLast}
@@ -68,24 +72,38 @@ function EarningListItem({ item, isLast }: { item: EarningItem; isLast: boolean 
   );
 }
 
-function EmptyState({ onRegister }: { onRegister: () => void }) {
+function EmptyState({
+  onRegister, onImport,
+}: {
+  onRegister: () => void;
+  onImport?: () => void;
+}) {
   return (
     <View style={styles.emptyState}>
       <Ionicons name="cash-outline" size={40} color={colors.text3} />
-      <Text style={styles.emptyTitle}>Nenhuma corrida hoje</Text>
-      <Text style={styles.emptySub}>Registre manualmente ou aguarde o sync automático</Text>
-      <TouchableOpacity style={styles.emptyBtn} onPress={onRegister}>
-        <Text style={styles.emptyBtnText}>Registrar manualmente</Text>
+      <Text style={styles.emptyTitle}>Nenhuma corrida ainda</Text>
+      <Text style={styles.emptySub}>Registre manualmente ou importe seu histórico da plataforma</Text>
+      {onImport ? (
+        <TouchableOpacity style={styles.emptyBtn} onPress={onImport}>
+          <Text style={styles.emptyBtnText}>Importar histórico</Text>
+        </TouchableOpacity>
+      ) : null}
+      <TouchableOpacity style={[styles.emptyBtn, onImport && styles.emptyBtnSecondary]} onPress={onRegister}>
+        <Text style={[styles.emptyBtnText, onImport && styles.emptyBtnTextSecondary]}>Registrar manualmente</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
+type NavProp = NativeStackNavigationProp<MainStackParamList>;
+
 export function GanhosScreen() {
+  const navigation = useNavigation<NavProp>();
   const { items, summary, period, isLoading, error, load, setPeriod, addEarning } = useEarningsStore();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState('UBER');
   const [monthlyGross, setMonthlyGross] = useState<number | null>(null);
+  const [importablePlatform, setImportablePlatform] = useState<string | null>(null);
 
   const { control, handleSubmit, reset, formState: { errors } } = useForm<TripForm>({
     resolver: zodResolver(tripSchema),
@@ -96,6 +114,10 @@ export function GanhosScreen() {
     useCallback(() => {
       load();
       earningsService.summary('month').then((s) => setMonthlyGross(s.gross_total)).catch(() => {});
+      integrationsService.status().then((res) => {
+        const found = res.integrations.find((p) => p.is_active && p.last_sync_status === 'NEVER');
+        setImportablePlatform(found?.platform ?? null);
+      }).catch(() => {});
     }, [load])
   );
 
@@ -198,7 +220,10 @@ export function GanhosScreen() {
           {isLoading ? (
             <SkeletonListItem count={3} />
           ) : items.length === 0 ? (
-            <EmptyState onRegister={() => setModalVisible(true)} />
+            <EmptyState
+              onRegister={() => setModalVisible(true)}
+              onImport={importablePlatform ? () => navigation.navigate('ImportCSV', { platform: importablePlatform }) : undefined}
+            />
           ) : (
             items.slice(0, 8).map((item, i) => (
               <EarningListItem key={item.id} item={item} isLast={i === Math.min(items.length, 8) - 1} />
@@ -318,11 +343,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.green,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.green,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 8,
+    ...Platform.select({
+      web: { boxShadow: `0px 4px 10px ${colors.green}66` } as object,
+      default: {
+        shadowColor: colors.green,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 10,
+        elevation: 8,
+      },
+    }),
   },
   emptyState: { alignItems: 'center', paddingVertical: 24, gap: 8 },
   emptyTitle: { ...typography.h3, color: colors.text },
@@ -334,7 +364,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 99,
   },
+  emptyBtnSecondary: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   emptyBtnText: { ...typography.label, color: colors.bg, fontWeight: '600' },
+  emptyBtnTextSecondary: { color: colors.text2 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.6)' },
   modalSheet: {

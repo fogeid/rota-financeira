@@ -12,6 +12,7 @@ interface EarningsStore {
   error: string | null;
   setPeriod: (p: Period) => void;
   load: (period?: Period) => Promise<void>;
+  refresh: () => Promise<void>;
   addEarning: (data: { platform: string; amount: number; km_driven: number; started_at: string; earned_at: string }) => Promise<void>;
   removeEarning: (id: string) => Promise<void>;
 }
@@ -37,6 +38,8 @@ export const useEarningsStore = create<EarningsStore>((set, get) => ({
     set({ period });
     get().load(period);
   },
+
+  refresh: () => get().load(),
 
   load: async (period) => {
     const p = period ?? get().period;

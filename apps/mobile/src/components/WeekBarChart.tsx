@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, typography } from '../theme';
+import { toNumber } from '../utils/numbers';
 
 interface DayData {
   day: string; // e.g. "SEG"
@@ -13,7 +14,7 @@ interface WeekBarChartProps {
 }
 
 export function WeekBarChart({ data }: WeekBarChartProps) {
-  const maxValue = Math.max(...data.map((d) => d.value), 1);
+  const maxValue = Math.max(...data.map((d) => toNumber(d.value)), 1);
 
   return (
     <View style={styles.container}>
@@ -27,9 +28,9 @@ export function WeekBarChart({ data }: WeekBarChartProps) {
           <View key={index} style={styles.column}>
             {hasData && (
               <Text style={styles.valueLabel}>
-                {item.value >= 1000
-                  ? `${(item.value / 1000).toFixed(1)}k`
-                  : String(item.value)}
+                {toNumber(item.value) >= 1000
+                  ? `${(toNumber(item.value) / 1000).toFixed(1)}k`
+                  : toNumber(item.value).toFixed(2).replace('.', ',')}
               </Text>
             )}
             <View style={styles.barArea}>

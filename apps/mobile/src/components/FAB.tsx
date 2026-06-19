@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
+import { Platform, TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
 import { colors } from '../theme';
 
 interface FABProps {
@@ -26,11 +26,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.green,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.green,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 8,
+    ...Platform.select({
+      web: { boxShadow: `0px 4px 10px ${colors.green}66` } as object,
+      default: {
+        shadowColor: colors.green,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 10,
+        elevation: 8,
+      },
+    }),
   },
   icon: {
     fontSize: 28,
