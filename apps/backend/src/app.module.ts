@@ -20,6 +20,8 @@ import { EarningsModule } from './modules/earnings/earnings.module';
 import { FinancingModule } from './modules/financing/financing.module';
 import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { ReferralModule } from './modules/referral/referral.module';
+import { InfluencerModule } from './modules/influencer/influencer.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { TaxesModule } from './modules/taxes/taxes.module';
@@ -95,6 +97,8 @@ import { REDIS_CLIENT, RedisModule } from './redis/redis.module';
     AlertsModule,
     IntegrationsModule,
     SubscriptionsModule,
+    ReferralModule,
+    InfluencerModule,
   ],
   controllers: [AppController],
   providers: [

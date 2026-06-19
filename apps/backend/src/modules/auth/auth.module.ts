@@ -12,9 +12,11 @@ import { OtpResendThrottleService } from './services/otp-resend-throttle.service
 import { PendingRegistrationService } from './services/pending-registration.service';
 import { TokenService } from './services/token.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { ReferralModule } from '../referral/referral.module';
 
 @Module({
   imports: [
+    ReferralModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
