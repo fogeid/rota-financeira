@@ -147,9 +147,18 @@ export function CustosScreen() {
   const [step, setStep] = useState<SheetStep>(1);
   const [selectedType, setSelectedType] = useState<CostType>('FUEL');
 
-  const fuelForm = useForm<FuelForm>({ resolver: zodResolver(fuelSchema) });
-  const maintenanceForm = useForm<MaintenanceForm>({ resolver: zodResolver(maintenanceSchema) });
-  const simpleForm = useForm<SimpleForm>({ resolver: zodResolver(simpleSchema) });
+  const fuelForm = useForm<FuelForm>({
+    resolver: zodResolver(fuelSchema),
+    defaultValues: { gas_station: '', liters: '', price_per_liter: '', odometer_km: '' },
+  });
+  const maintenanceForm = useForm<MaintenanceForm>({
+    resolver: zodResolver(maintenanceSchema),
+    defaultValues: { amount: '', description: '', current_odometer_km: '', next_service_km: '' },
+  });
+  const simpleForm = useForm<SimpleForm>({
+    resolver: zodResolver(simpleSchema),
+    defaultValues: { amount: '', description: '' },
+  });
 
   useEffect(() => {
     load();
