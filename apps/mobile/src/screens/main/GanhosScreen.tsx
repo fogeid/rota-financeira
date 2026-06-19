@@ -20,6 +20,7 @@ import {
 import { useEarningsStore } from '../../store/earningsStore';
 import { earningsService } from '../../services/earningsService';
 import { formatCurrency } from '../../utils/formatters';
+import { toNumber } from '../../utils/numbers';
 import type { EarningItem } from '../../types/api';
 
 type Period = 'today' | 'week' | 'month';
@@ -63,7 +64,7 @@ function EarningListItem({ item, isLast }: { item: EarningItem; isLast: boolean 
         </View>
       }
       name={`${PLATFORM_LABEL[item.platform] ?? item.platform} · ${time}`}
-      sub={`${item.km_driven.toFixed(1)} km · ${item.origin === 'MANUAL' ? 'Manual' : 'Sync'}`}
+      sub={`${toNumber(item.km_driven).toFixed(1)} km · ${item.origin === 'MANUAL' ? 'Manual' : 'Sync'}`}
       value={formatCurrency(item.amount)}
       valueColor={colors.green}
       isLast={isLast}

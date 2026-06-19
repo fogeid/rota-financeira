@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, typography } from '../theme';
+import { toNumber } from '../utils/numbers';
 
 interface DayData {
   day: string; // e.g. "SEG"
@@ -28,8 +29,8 @@ export function WeekBarChart({ data }: WeekBarChartProps) {
             {hasData && (
               <Text style={styles.valueLabel}>
                 {item.value >= 1000
-                  ? `${(item.value / 1000).toFixed(1)}k`
-                  : String(item.value)}
+                  ? `${(toNumber(item.value) / 1000).toFixed(1)}k`
+                  : String(toNumber(item.value))}
               </Text>
             )}
             <View style={styles.barArea}>

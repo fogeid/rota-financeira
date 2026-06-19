@@ -9,6 +9,7 @@ import { CustosScreen } from '../screens/main/CustosScreen';
 import { MeuCarroScreen } from '../screens/main/MeuCarroScreen';
 import { RelatoriosScreen } from '../screens/main/RelatoriosScreen';
 import { PerfilScreen } from '../screens/main/PerfilScreen';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 export type MainTabParamList = {
   Home: undefined;
@@ -73,12 +74,24 @@ export function MainNavigator() {
         headerShadowVisible: false,
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Início' }} />
-      <Tab.Screen name="Ganhos" component={GanhosScreen} options={{ title: 'Ganhos' }} />
-      <Tab.Screen name="Custos" component={CustosScreen} options={{ title: 'Custos' }} />
-      <Tab.Screen name="MeuCarro" component={MeuCarroScreen} options={{ title: 'Meu Carro' }} />
-      <Tab.Screen name="Relatorios" component={RelatoriosScreen} options={{ title: 'Relatórios' }} />
-      <Tab.Screen name="Perfil" component={PerfilScreen} options={{ title: 'Perfil' }} />
+      <Tab.Screen name="Home" options={{ title: 'Início' }}>
+        {() => <ErrorBoundary fallbackTitle="Erro na tela Início"><HomeScreen /></ErrorBoundary>}
+      </Tab.Screen>
+      <Tab.Screen name="Ganhos" options={{ title: 'Ganhos' }}>
+        {() => <ErrorBoundary fallbackTitle="Erro na tela Ganhos"><GanhosScreen /></ErrorBoundary>}
+      </Tab.Screen>
+      <Tab.Screen name="Custos" options={{ title: 'Custos' }}>
+        {() => <ErrorBoundary fallbackTitle="Erro na tela Custos"><CustosScreen /></ErrorBoundary>}
+      </Tab.Screen>
+      <Tab.Screen name="MeuCarro" options={{ title: 'Meu Carro' }}>
+        {() => <ErrorBoundary fallbackTitle="Erro na tela Meu Carro"><MeuCarroScreen /></ErrorBoundary>}
+      </Tab.Screen>
+      <Tab.Screen name="Relatorios" options={{ title: 'Relatórios' }}>
+        {() => <ErrorBoundary fallbackTitle="Erro na tela Relatórios"><RelatoriosScreen /></ErrorBoundary>}
+      </Tab.Screen>
+      <Tab.Screen name="Perfil" options={{ title: 'Perfil' }}>
+        {() => <ErrorBoundary fallbackTitle="Erro na tela Perfil"><PerfilScreen /></ErrorBoundary>}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }

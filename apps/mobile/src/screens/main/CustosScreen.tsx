@@ -15,6 +15,7 @@ import {
 } from '../../components';
 import { useCostsStore } from '../../store/costsStore';
 import { formatCurrency } from '../../utils/formatters';
+import { toNumber, formatNumber } from '../../utils/numbers';
 import type { CostItem, CostType } from '../../types/api';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -233,7 +234,7 @@ export function CustosScreen() {
           <HeroCard
             label="Total custos do mês"
             value={`- ${formatCurrency(summary.total)}`}
-            sub={`${(summary.km_driven ?? 0).toLocaleString('pt-BR')} km · custo/km: R$ ${(summary.cost_per_km ?? 0).toFixed(2).replace('.', ',')}`}
+            sub={`${toNumber(summary.km_driven).toLocaleString('pt-BR')} km · custo/km: R$ ${formatNumber(summary.cost_per_km)}`}
             variant="negative"
           />
         )}
@@ -245,12 +246,12 @@ export function CustosScreen() {
             <MetricCard
               label="Combustível"
               value={formatCurrency(summary.by_type.FUEL?.total ?? 0)}
-              sub={`${summary.by_type.FUEL?.percentage.toFixed(0) ?? 0}% dos custos`}
+              sub={`${formatNumber(summary.by_type.FUEL?.percentage, 0)}% dos custos`}
             />
             <MetricCard
               label="Manutenção"
               value={formatCurrency(summary.by_type.MAINTENANCE?.total ?? 0)}
-              sub={`${summary.by_type.MAINTENANCE?.percentage.toFixed(0) ?? 0}% dos custos`}
+              sub={`${formatNumber(summary.by_type.MAINTENANCE?.percentage, 0)}% dos custos`}
             />
             <MetricCard
               label="Km rodados"
@@ -282,7 +283,7 @@ export function CustosScreen() {
                 key={item.id}
                 icon={costIcon('FUEL')}
                 name={item.fuel_log?.gas_station ?? 'Abastecimento'}
-                sub={`${item.fuel_log?.liters ?? 0}L · R$ ${item.fuel_log?.price_per_liter?.toFixed(2).replace('.', ',') ?? '0,00'}/L`}
+                sub={`${formatNumber(item.fuel_log?.liters, 1)}L · R$ ${formatNumber(item.fuel_log?.price_per_liter)}/L`}
                 value={`- ${formatCurrency(item.amount)}`}
                 valueColor={colors.red}
                 isLast={i === fuelItems.length - 1}
