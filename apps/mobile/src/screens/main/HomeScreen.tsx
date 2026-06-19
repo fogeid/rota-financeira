@@ -13,7 +13,9 @@ import {
   ListItem, Badge, SkeletonHeroCard, SkeletonMetricGrid,
   FormInput, Chip, ConfirmButton,
 } from '../../components';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { MainStackParamList } from '../../navigation/MainStack';
 import { useHomeStore } from '../../store/homeStore';
 import { useEarningsStore } from '../../store/earningsStore';
 import { useCostsStore } from '../../store/costsStore';
@@ -249,7 +251,10 @@ function RegisterCostModal({ visible, onClose, onSuccess }: {
 
 // ─── Main Screen ───────────────────────────────────────────────────────────
 
+type NavProp = NativeStackNavigationProp<MainStackParamList>;
+
 export function HomeScreen() {
+  const navigation = useNavigation<NavProp>();
   const { data, isLoading, error, load, refreshIntegrations } = useHomeStore();
   const user = useAuthStore((s) => s.user);
   const [earningModalVisible, setEarningModalVisible] = useState(false);
@@ -381,39 +386,54 @@ export function HomeScreen() {
               Nenhuma plataforma conectada. Vá em Perfil para conectar.
             </Text>
           ) : (
-            data.integrations.map((s, i) => (
-              <ListItem
-                key={s.platform}
-                icon={
-                  <View style={[styles.platformIcon, { backgroundColor: s.is_active ? colors.greenBg : colors.border }]}>
-                    <Ionicons name="car-outline" size={16} color={s.is_active ? colors.green : colors.text3} />
-                  </View>
-                }
-                name={PLATFORM_LABEL[s.platform] ?? s.platform}
-                sub={syncLabel(s)}
-                isLast={i === data.integrations.length - 1}
-                right={
-                  s.last_sync_status === 'IN_PROGRESS' ? (
-                    <ActivityIndicator size="small" color={colors.green} />
-                  ) : s.last_sync_status === 'FAILED' ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Badge variant="red" label="Falhou" />
-                      <TouchableOpacity
-                        onPress={() => handleRetrySync(s.platform)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons name="refresh-outline" size={18} color={colors.green} />
-                      </TouchableOpacity>
+            data.integrations.map((s, i) => {
+              const canImport = s.is_active && s.last_sync_status === 'NEVER';
+              const item = (
+                <ListItem
+                  icon={
+                    <View style={[styles.platformIcon, { backgroundColor: s.is_active ? colors.greenBg : colors.border }]}>
+                      <Ionicons name="car-outline" size={16} color={s.is_active ? colors.green : colors.text3} />
                     </View>
-                  ) : (
-                    <Badge
-                      variant={s.last_sync_status === 'SUCCESS' ? 'green' : 'amber'}
-                      label={s.last_sync_status === 'SUCCESS' ? 'Ativo' : 'Aguardando'}
-                    />
-                  )
-                }
-              />
-            ))
+                  }
+                  name={PLATFORM_LABEL[s.platform] ?? s.platform}
+                  sub={canImport ? 'Toque para importar seu histórico' : syncLabel(s)}
+                  isLast={i === data.integrations.length - 1}
+                  right={
+                    s.last_sync_status === 'IN_PROGRESS' ? (
+                      <ActivityIndicator size="small" color={colors.green} />
+                    ) : s.last_sync_status === 'FAILED' ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Badge variant="red" label="Falhou" />
+                        <TouchableOpacity
+                          onPress={() => handleRetrySync(s.platform)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="refresh-outline" size={18} color={colors.green} />
+                        </TouchableOpacity>
+                      </View>
+                    ) : canImport ? (
+                      <Ionicons name="cloud-upload-outline" size={18} color={colors.green} />
+                    ) : (
+                      <Badge
+                        variant={s.last_sync_status === 'SUCCESS' ? 'green' : 'amber'}
+                        label={s.last_sync_status === 'SUCCESS' ? 'Ativo' : 'Aguardando'}
+                      />
+                    )
+                  }
+                />
+              );
+              return canImport ? (
+                <TouchableOpacity
+                  key={s.platform}
+                  activeOpacity={0.75}
+                  onPress={() => navigation.navigate('ImportCSV', { platform: s.platform })}
+                >
+                  {item}
+                </TouchableOpacity>
+              ) : (
+                <React.Fragment key={s.platform}>{item}</React.Fragment>
+              );
+            })
           )}
         </Card>
 
