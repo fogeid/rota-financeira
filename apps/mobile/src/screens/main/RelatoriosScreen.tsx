@@ -119,12 +119,12 @@ export function RelatoriosScreen() {
             <StatRow
               label="Ganho bruto"
               value={formatCurrency(report.gross_income)}
-              delta={report.vs_previous_month.gross_income}
+              delta={toNumber(report.vs_previous_month.gross_income)}
             />
             <StatRow
               label="Lucro líquido"
               value={formatCurrency(report.net_income)}
-              delta={report.vs_previous_month.net_income}
+              delta={toNumber(report.vs_previous_month.net_income)}
             />
           </Card>
 

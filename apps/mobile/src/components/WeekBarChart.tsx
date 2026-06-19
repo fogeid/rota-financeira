@@ -14,7 +14,7 @@ interface WeekBarChartProps {
 }
 
 export function WeekBarChart({ data }: WeekBarChartProps) {
-  const maxValue = Math.max(...data.map((d) => d.value), 1);
+  const maxValue = Math.max(...data.map((d) => toNumber(d.value)), 1);
 
   return (
     <View style={styles.container}>
