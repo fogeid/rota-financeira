@@ -782,10 +782,10 @@ export function PerfilScreen() {
   function handleConnectSuccess(platform: 'UBER' | 'NOVENTA_E_NOVE') {
     reloadIntegrations();
     integrationsService.triggerSync(platform).catch(() => {});
-    // Oferecer permissão de notificação se ainda não concedida
     if (!NotificationListener.isPermissionGranted()) {
       setNotifPermissionVisible(true);
     }
+    navigation.navigate('ImportCSV', { platform });
   }
 
   function getAlertEnabled(type: string): boolean {
@@ -925,6 +925,13 @@ export function PerfilScreen() {
           toggleValue={isConnected('UBER')}
           onToggle={(v) => handleTogglePlatform('UBER', v)}
         />
+        {isConnected('UBER') && (
+          <SettingRow
+            icon="document-text-outline"
+            label="Importar histórico do Uber"
+            onPress={() => navigation.navigate('ImportCSV', { platform: 'UBER' })}
+          />
+        )}
         <SettingRow
           icon="logo-usd"
           label="99"
@@ -932,8 +939,16 @@ export function PerfilScreen() {
           toggle
           toggleValue={isConnected('NOVENTA_E_NOVE')}
           onToggle={(v) => handleTogglePlatform('NOVENTA_E_NOVE', v)}
-          isLast
+          isLast={!isConnected('NOVENTA_E_NOVE')}
         />
+        {isConnected('NOVENTA_E_NOVE') && (
+          <SettingRow
+            icon="document-text-outline"
+            label="Importar histórico do 99"
+            onPress={() => navigation.navigate('ImportCSV', { platform: 'NOVENTA_E_NOVE' })}
+            isLast
+          />
+        )}
       </Card>
 
       {/* Preferences */}

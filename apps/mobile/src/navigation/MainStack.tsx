@@ -7,6 +7,7 @@ import { PaymentScreen } from '../screens/main/PaymentScreen';
 import { CartaoScreen } from '../screens/main/CartaoScreen';
 import { PixScreen } from '../screens/main/PixScreen';
 import { PaymentSuccessScreen } from '../screens/main/PaymentSuccessScreen';
+import { ImportCSVScreen } from '../screens/integrations/ImportCSVScreen';
 
 export type MainStackParamList = {
   Tabs: undefined;
@@ -15,6 +16,7 @@ export type MainStackParamList = {
   Cartao: { planId: 'premium_monthly' | 'premium_yearly' };
   Pix: { planId: 'premium_yearly' };
   PaymentSuccess: { method: 'card' | 'pix'; planId: string };
+  ImportCSV: { platform: string };
 };
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -38,6 +40,11 @@ export function MainStack() {
         name="PaymentSuccess"
         component={PaymentSuccessScreen}
         options={{ title: 'Assinatura ativada', headerLeft: () => null, gestureEnabled: false }}
+      />
+      <Stack.Screen
+        name="ImportCSV"
+        component={ImportCSVScreen}
+        options={{ title: 'Importar histórico' }}
       />
     </Stack.Navigator>
   );

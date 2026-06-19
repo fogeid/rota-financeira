@@ -1,5 +1,9 @@
-import { Body, Controller, Delete, Get, Header, HttpCode, HttpStatus, Param, ParseEnumPipe, Post } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body, Controller, Delete, Get, Header, HttpCode, HttpStatus,
+  Param, ParseEnumPipe, Post, UploadedFile, UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Platform } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/types/authenticated-user';
@@ -34,6 +38,19 @@ export class IntegrationsController {
     @Param('platform', new ParseEnumPipe(Platform)) platform: Platform,
   ) {
     return this.integrationsService.triggerManualSync(user.sub, platform);
+  }
+
+  @Post(':platform/import-csv')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Importa histórico de corridas a partir de CSV exportado da plataforma' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  importCSV(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('platform', new ParseEnumPipe(Platform)) platform: Platform,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.integrationsService.importCSV(user.sub, platform, file.buffer);
   }
 
   @Delete(':platform')

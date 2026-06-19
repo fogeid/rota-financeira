@@ -1,13 +1,15 @@
 import {
+  BadRequestException,
   ConflictException,
   HttpException,
   HttpStatus,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
-import { Platform, SyncStatus } from '@prisma/client';
+import { EarningOrigin, Platform, SyncStatus } from '@prisma/client';
 import * as crypto from 'crypto';
 import { Queue } from 'bullmq';
 import { EncryptionService } from '../../common/services/encryption.service';
@@ -104,6 +106,104 @@ export class IntegrationsService {
     });
 
     return { message: 'Plataforma desconectada e credenciais removidas' };
+  }
+
+  async importCSV(userId: string, platform: Platform, buffer: Buffer): Promise<{ imported: number; skipped: number }> {
+    const csv = buffer.toString('utf8').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const lines = csv.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (lines.length < 2) throw new BadRequestException('CSV vazio ou sem dados');
+
+    const headers = this.parseCSVRow(lines[0]).map((h) => h.toLowerCase().trim());
+
+    const amountIdx = this.findColumn(headers, ['fare', 'driver pay', 'valor', 'ganhos', 'amount', 'earnings']);
+    const dateIdx = this.findColumn(headers, ['date/time', 'data', 'date', 'trip date', 'completed at']);
+    const kmIdx = this.findColumn(headers, ['distance (km)', 'distância (km)', 'km', 'distancia', 'distance']);
+    const idIdx = this.findColumn(headers, ['trip or order uuid', 'uuid', 'id', 'trip_id', 'order_id']);
+
+    if (amountIdx === -1 || dateIdx === -1) {
+      throw new UnprocessableEntityException(
+        'Colunas de valor e data não encontradas. Exporte diretamente do app ou site oficial.',
+      );
+    }
+
+    let imported = 0;
+    let skipped = 0;
+
+    for (let i = 1; i < lines.length; i++) {
+      const cols = this.parseCSVRow(lines[i]);
+      const rawAmount = cols[amountIdx]?.replace(/[R$\s]/g, '').replace(',', '.') ?? '';
+      const amount = parseFloat(rawAmount);
+      if (!amount || amount <= 0) continue;
+
+      const rawDate = cols[dateIdx] ?? '';
+      const earnedAt = this.parseDate(rawDate);
+      if (!earnedAt) continue;
+
+      const kmRaw = kmIdx !== -1 ? cols[kmIdx]?.replace(',', '.') : undefined;
+      const kmDriven = kmRaw ? parseFloat(kmRaw) : 0;
+
+      const externalId = idIdx !== -1 ? cols[idIdx]?.trim() : undefined;
+      const external_id = externalId || `csv_${platform}_${earnedAt.getTime()}_${i}`;
+
+      const existing = await this.prisma.earning.findUnique({
+        where: { user_id_platform_external_id: { user_id: userId, platform, external_id } },
+      });
+      if (existing) { skipped++; continue; }
+
+      await this.prisma.earning.create({
+        data: {
+          user_id: userId,
+          platform,
+          amount,
+          km_driven: isNaN(kmDriven) ? 0 : kmDriven,
+          earned_at: earnedAt,
+          started_at: earnedAt,
+          origin: EarningOrigin.MANUAL,
+          external_id,
+        },
+      });
+      imported++;
+    }
+
+    return { imported, skipped };
+  }
+
+  private findColumn(headers: string[], candidates: string[]): number {
+    for (const c of candidates) {
+      const idx = headers.findIndex((h) => h.includes(c.toLowerCase()));
+      if (idx !== -1) return idx;
+    }
+    return -1;
+  }
+
+  private parseCSVRow(line: string): string[] {
+    const cols: string[] = [];
+    let cur = '';
+    let inQuote = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        inQuote = !inQuote;
+      } else if (ch === ',' && !inQuote) {
+        cols.push(cur.replace(/^"|"$/g, '').trim());
+        cur = '';
+      } else {
+        cur += ch;
+      }
+    }
+    cols.push(cur.replace(/^"|"$/g, '').trim());
+    return cols;
+  }
+
+  private parseDate(raw: string): Date | null {
+    if (!raw) return null;
+    // Try ISO format: 2024-01-15, 2024-01-15T10:30:00
+    const iso = new Date(raw);
+    if (!isNaN(iso.getTime())) return iso;
+    // Try Brazilian format: 15/01/2024
+    const br = raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if (br) return new Date(parseInt(br[3]), parseInt(br[2]) - 1, parseInt(br[1]), 12, 0, 0);
+    return null;
   }
 
   /**
