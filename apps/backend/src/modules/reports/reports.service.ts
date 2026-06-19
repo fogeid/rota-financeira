@@ -21,6 +21,12 @@ export interface MonthlyReportData {
   trips: number;
   cost_per_km: number | null;
   tax_amount: number;
+  estimated_tax: number;
+  installment_covered: number;
+  best_day: { date: string; net: number };
+  worst_day: { date: string; net: number };
+  vs_previous_month: { gross_income: number; net_income: number };
+  next_month_projection: { gross_income: number; net_income: number };
   distribution: { pct_installment: number; pct_costs: number; pct_income: number } | null;
   health: { ratio: number; status: string } | null;
 }
@@ -34,26 +40,48 @@ export class ReportsService {
     const start = firstDayOfMonth(refDate);
     const end = lastDayOfMonth(refDate);
 
-    const [earningsAgg, costsAgg, financing, costs] = await Promise.all([
-      this.prisma.earning.aggregate({
-        where: { user_id: userId, earned_at: { gte: start, lte: end } },
-        _sum: { amount: true },
-        _count: { id: true },
-      }),
-      this.prisma.cost.aggregate({
-        where: { user_id: userId, cost_date: { gte: start, lte: end } },
-        _sum: { amount: true },
-      }),
-      this.prisma.financing.findUnique({ where: { user_id: userId } }),
-      this.prisma.cost.findMany({
-        where: { user_id: userId, cost_date: { gte: start, lte: end } },
-        include: { fuel_log: true },
-      }),
-    ]);
+    const prevDate = new Date(refDate.getFullYear(), refDate.getMonth() - 1, 1);
+    const prevStart = firstDayOfMonth(prevDate);
+    const prevEnd = lastDayOfMonth(prevDate);
+
+    const [earningsAgg, costsAgg, financing, costs, dailyEarnings, prevEarningsAgg, prevCostsAgg] =
+      await Promise.all([
+        this.prisma.earning.aggregate({
+          where: { user_id: userId, earned_at: { gte: start, lte: end } },
+          _sum: { amount: true },
+          _count: { id: true },
+        }),
+        this.prisma.cost.aggregate({
+          where: { user_id: userId, cost_date: { gte: start, lte: end } },
+          _sum: { amount: true },
+        }),
+        this.prisma.financing.findUnique({ where: { user_id: userId } }),
+        this.prisma.cost.findMany({
+          where: { user_id: userId, cost_date: { gte: start, lte: end } },
+          include: { fuel_log: true },
+        }),
+        this.prisma.earning.groupBy({
+          by: ['earned_at'],
+          where: { user_id: userId, earned_at: { gte: start, lte: end } },
+          _sum: { amount: true },
+        }),
+        this.prisma.earning.aggregate({
+          where: { user_id: userId, earned_at: { gte: prevStart, lte: prevEnd } },
+          _sum: { amount: true },
+        }),
+        this.prisma.cost.aggregate({
+          where: { user_id: userId, cost_date: { gte: prevStart, lte: prevEnd } },
+          _sum: { amount: true },
+        }),
+      ]);
 
     const grossIncome = Number((earningsAgg._sum.amount as Decimal | null) ?? 0);
     const totalCosts = Number((costsAgg._sum.amount as Decimal | null) ?? 0);
     const netIncome = grossIncome - totalCosts;
+
+    const prevGross = Number((prevEarningsAgg._sum.amount as Decimal | null) ?? 0);
+    const prevCosts = Number((prevCostsAgg._sum.amount as Decimal | null) ?? 0);
+    const prevNet = prevGross - prevCosts;
 
     const totalFuel = costs
       .filter((c) => c.fuel_log != null)
@@ -61,6 +89,7 @@ export class ReportsService {
     const odometers = costs
       .filter((c) => c.fuel_log != null)
       .map((c) => Number(c.fuel_log!.odometer_km as Decimal))
+      .filter((km) => km > 0)
       .sort((a, b) => a - b);
     const costPerKm = calculateCostPerKm(
       totalFuel,
@@ -69,6 +98,23 @@ export class ReportsService {
     );
 
     const { tax_amount } = calculateMonthlyTax(grossIncome, totalFuel);
+
+    const defaultDay = { date: `${month}-01`, net: 0 };
+    const dailyNets = dailyEarnings.map((g) => ({
+      date: (g.earned_at as Date).toISOString().slice(0, 10),
+      net: Math.round(Number((g._sum.amount as Decimal | null) ?? 0) * 100) / 100,
+    }));
+    const bestDay =
+      dailyNets.length > 0 ? dailyNets.reduce((b, d) => (d.net > b.net ? d : b)) : defaultDay;
+    const worstDay =
+      dailyNets.length > 0 ? dailyNets.reduce((w, d) => (d.net < w.net ? d : w)) : defaultDay;
+
+    const installmentCovered = financing
+      ? Math.min(
+          Number(financing.monthly_installment as Decimal),
+          Math.max(0, netIncome),
+        )
+      : 0;
 
     let distribution = null;
     let health = null;
@@ -86,6 +132,18 @@ export class ReportsService {
       trips: earningsAgg._count.id,
       cost_per_km: costPerKm,
       tax_amount,
+      estimated_tax: tax_amount,
+      installment_covered: Math.round(installmentCovered * 100) / 100,
+      best_day: bestDay,
+      worst_day: worstDay,
+      vs_previous_month: {
+        gross_income: Math.round((grossIncome - prevGross) * 100) / 100,
+        net_income: Math.round((netIncome - prevNet) * 100) / 100,
+      },
+      next_month_projection: {
+        gross_income: Math.round(grossIncome * 100) / 100,
+        net_income: Math.round(netIncome * 100) / 100,
+      },
       distribution,
       health,
     };

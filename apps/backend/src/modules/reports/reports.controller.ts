@@ -13,6 +13,12 @@ import { ReportsService } from './reports.service';
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
+  @Get('monthly')
+  @ApiOperation({ summary: 'Relatório do mês atual' })
+  getMonthlyDefault(@CurrentUser() user: AuthenticatedUser) {
+    return this.reportsService.getMonthlyReport(user.sub, this.reportsService.currentMonth());
+  }
+
   @Get('monthly/:month')
   @ApiOperation({ summary: 'Relatório mensal (ex: 2026-06)' })
   getMonthly(@CurrentUser() user: AuthenticatedUser, @Param('month') month: string) {

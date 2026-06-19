@@ -364,7 +364,11 @@ export function HomeScreen() {
             <MetricCard label="Parcela" value={formatCurrency(data.installment)} sub={`Vence em ${data.days_until_due} dias`} />
             <MetricCard label="IR estimado" value={formatCurrency(data.estimated_tax)} sub="Este mês" />
             <MetricCard label="Semana" value={formatCurrency(data.week_earnings)} sub="+12% vs. semana passada" />
-            <MetricCard label="Custo/km" value={`R$ ${toNumber(data.cost_per_km).toFixed(2).replace('.', ',')}`} sub="Média mensal" />
+            <MetricCard
+                label="Custo/km"
+                value={data.cost_per_km != null ? `R$ ${toNumber(data.cost_per_km).toFixed(2).replace('.', ',')}` : '—'}
+                sub={data.cost_per_km != null ? 'Média mensal' : 'Informe o km ao abastecer'}
+              />
           </MetricGrid>
         )}
 
