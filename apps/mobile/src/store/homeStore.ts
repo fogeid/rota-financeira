@@ -114,7 +114,7 @@ export const useHomeStore = create<HomeStore>((set, get) => ({
           installment: financing?.monthly_installment ?? 0,
           days_until_due: progress?.days_until_due ?? 0,
           estimated_tax: taxMonth?.tax_amount ?? 0,
-          cost_per_km: costsSummary?.cost_per_km ?? 0,
+          cost_per_km: costsSummary?.cost_per_km ?? null,
           week_data: buildWeekDays(dailyGoal, weekEarnings?.data ?? []),
           alerts: alerts.slice(0, 2),
           integrations: integrationsData?.integrations ?? [],

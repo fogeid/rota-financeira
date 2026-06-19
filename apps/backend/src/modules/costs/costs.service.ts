@@ -89,7 +89,10 @@ export class CostsService {
       .reduce((s, c) => s + Number(c.amount as Decimal), 0);
 
     const fuelLogs = costs.filter((c) => c.fuel_log != null).map((c) => c.fuel_log!);
-    const odometers = fuelLogs.map((f) => Number(f.odometer_km as Decimal)).sort((a, b) => a - b);
+    const odometers = fuelLogs
+      .map((f) => Number(f.odometer_km as Decimal))
+      .filter((km) => km > 0)
+      .sort((a, b) => a - b);
     const firstOdometer = odometers.length > 0 ? odometers[0] : null;
     const lastOdometer = odometers.length > 0 ? odometers[odometers.length - 1] : null;
 

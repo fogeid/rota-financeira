@@ -28,9 +28,9 @@ export function WeekBarChart({ data }: WeekBarChartProps) {
           <View key={index} style={styles.column}>
             {hasData && (
               <Text style={styles.valueLabel}>
-                {item.value >= 1000
+                {toNumber(item.value) >= 1000
                   ? `${(toNumber(item.value) / 1000).toFixed(1)}k`
-                  : String(toNumber(item.value))}
+                  : toNumber(item.value).toFixed(2).replace('.', ',')}
               </Text>
             )}
             <View style={styles.barArea}>

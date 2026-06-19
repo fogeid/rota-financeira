@@ -107,10 +107,10 @@ export function RelatoriosScreen() {
             </View>
             <StatRow
               label="Custo/km"
-              value={`R$ ${toNumber(report.cost_per_km).toFixed(2).replace('.', ',')}`}
+              value={report.cost_per_km != null ? `R$ ${toNumber(report.cost_per_km).toFixed(2).replace('.', ',')}` : '—'}
             />
-            <StatRow label="Melhor dia" value={`${report.best_day.date.slice(8)} — ${formatCurrency(report.best_day.net)}`} valueColor={colors.green} />
-            <StatRow label="Pior dia" value={`${report.worst_day.date.slice(8)} — ${formatCurrency(report.worst_day.net)}`} valueColor={colors.red} />
+            <StatRow label="Melhor dia" value={report.best_day ? `${report.best_day.date.slice(8)} — ${formatCurrency(report.best_day.net)}` : '—'} valueColor={colors.green} />
+            <StatRow label="Pior dia" value={report.worst_day ? `${report.worst_day.date.slice(8)} — ${formatCurrency(report.worst_day.net)}` : '—'} valueColor={colors.red} />
           </Card>
 
           {/* Comparativo */}
