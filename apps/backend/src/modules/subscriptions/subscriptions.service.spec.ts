@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ReferralService } from '../referral/referral.service';
 import { PagarmeService } from './pagarme.service';
 import { SubscriptionsService } from './subscriptions.service';
 import { SubscribeDto } from './dto/subscribe.dto';
@@ -44,6 +45,10 @@ const mockNotifications = {
   create: jest.fn(),
 };
 
+const mockReferral = {
+  handlePaymentConversion: jest.fn().mockResolvedValue(undefined),
+};
+
 describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
 
@@ -54,6 +59,7 @@ describe('SubscriptionsService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: PagarmeService, useValue: mockPagarme },
         { provide: NotificationsService, useValue: mockNotifications },
+        { provide: ReferralService, useValue: mockReferral },
         { provide: 'LOGGER', useValue: mockLogger },
       ],
     }).compile();

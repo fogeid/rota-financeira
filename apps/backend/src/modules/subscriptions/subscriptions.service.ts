@@ -10,6 +10,7 @@ import {
 import { BillingCycle, NotificationType, PaymentMethod, PaymentStatus, Plan, SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ReferralService } from '../referral/referral.service';
 import { PLANS, MAX_PAYMENT_FAILURES, PlanId } from './subscriptions.constants';
 import { PagarmeService } from './pagarme.service';
 import { SubscribeDto } from './dto/subscribe.dto';
@@ -30,6 +31,7 @@ export class SubscriptionsService {
     private readonly prisma: PrismaService,
     private readonly pagarme: PagarmeService,
     private readonly notifications: NotificationsService,
+    private readonly referralService: ReferralService,
     @Inject('LOGGER') private readonly logger: LoggerService,
   ) {}
 
@@ -294,6 +296,9 @@ export class SubscriptionsService {
       title: 'Pagamento aprovado',
       body: 'Sua assinatura Premium foi renovada com sucesso!',
     });
+
+    // Dispara cashback para quem indicou este assinante (fire-and-forget — falha não afeta pagamento)
+    this.referralService.handlePaymentConversion(subscription.user_id).catch(() => undefined);
   }
 
   private async onPaymentFailed(data: WebhookPayload['data']): Promise<void> {

@@ -12,6 +12,7 @@ export interface PendingRegistration {
   phone: string; // criptografado
   phone_hash: string;
   password_hash: string;
+  referral_code?: string;
 }
 
 /**
