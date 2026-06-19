@@ -21,11 +21,11 @@ export const useCostsStore = create<CostsStore>((set, get) => ({
   load: async () => {
     set({ isLoading: true, error: null });
     try {
-      const [listRes, summaryRes] = await Promise.all([
+      const [items, summaryRes] = await Promise.all([
         costsService.list(),
         costsService.summary(),
       ]);
-      set({ items: listRes?.data ?? [], summary: summaryRes, isLoading: false });
+      set({ items: items ?? [], summary: summaryRes, isLoading: false });
     } catch {
       set({ error: 'Erro ao carregar custos.', isLoading: false });
     }
