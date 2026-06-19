@@ -10,6 +10,7 @@ import { useFinancingStore } from '../../store/financingStore';
 import { earningsService } from '../../services/earningsService';
 import { vehiclesService } from '../../services/vehiclesService';
 import { formatCurrency } from '../../utils/formatters';
+import { toNumber } from '../../utils/numbers';
 import type { EarningItem } from '../../types/api';
 import type { VehicleData } from '../../services/vehiclesService';
 
@@ -25,7 +26,7 @@ function buildWeekDays(goal: number, earnings: EarningItem[]) {
     const diff = Math.floor((today.getTime() - d.getTime()) / 86400000);
     if (diff >= 0 && diff < 7) {
       const dow = d.getDay();
-      dayTotals[dow] = (dayTotals[dow] ?? 0) + e.amount;
+      dayTotals[dow] = (dayTotals[dow] ?? 0) + toNumber(e.amount);
     }
   }
 

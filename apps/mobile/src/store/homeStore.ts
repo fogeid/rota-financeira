@@ -4,6 +4,7 @@ import { earningsService } from '../services/earningsService';
 import { costsService } from '../services/costsService';
 import { integrationsService } from '../services/integrationsService';
 import { taxesService } from '../services/taxesService';
+import { toNumber } from '../utils/numbers';
 import type { HomeData, EarningItem, IntegrationStatus } from '../types/api';
 
 const DAYS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
@@ -18,7 +19,7 @@ function buildWeekDays(goal: number, earnings: EarningItem[]) {
     const diff = Math.floor((today.getTime() - d.getTime()) / 86400000);
     if (diff >= 0 && diff < 7) {
       const dow = d.getDay();
-      dayTotals[dow] = (dayTotals[dow] ?? 0) + e.amount;
+      dayTotals[dow] = (dayTotals[dow] ?? 0) + toNumber(e.amount);
     }
   }
 
@@ -101,7 +102,7 @@ export const useHomeStore = create<HomeStore>((set, get) => ({
       if (progress && progress.days_until_due <= 5 && progress.deficit > 0) {
         alerts.push({
           variant: 'red',
-          message: `Parcela vence em ${progress.days_until_due} dias. Faltam R$ ${progress.deficit.toFixed(2).replace('.', ',')} para cobri-la.`,
+          message: `Parcela vence em ${progress.days_until_due} dias. Faltam R$ ${toNumber(progress.deficit).toFixed(2).replace('.', ',')} para cobri-la.`,
         });
       }
 
@@ -114,7 +115,7 @@ export const useHomeStore = create<HomeStore>((set, get) => ({
           installment: financing?.monthly_installment ?? 0,
           days_until_due: progress?.days_until_due ?? 0,
           estimated_tax: taxMonth?.tax_amount ?? 0,
-          cost_per_km: costsSummary?.cost_per_km ?? 0,
+          cost_per_km: costsSummary?.cost_per_km ?? null,
           week_data: buildWeekDays(dailyGoal, weekEarnings?.data ?? []),
           alerts: alerts.slice(0, 2),
           integrations: integrationsData?.integrations ?? [],

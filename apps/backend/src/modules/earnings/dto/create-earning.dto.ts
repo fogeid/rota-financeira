@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Platform } from '@prisma/client';
-import { IsDateString, IsEnum, IsNumber, IsOptional, IsPositive, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsNumber, IsOptional, IsPositive, IsString, MaxLength, Min } from 'class-validator';
 
 export class CreateEarningDto {
   @ApiProperty({ enum: Platform, example: 'UBER' })
@@ -25,4 +25,10 @@ export class CreateEarningDto {
   @ApiProperty({ example: '2026-06-15', description: 'Data de recebimento (YYYY-MM-DD)' })
   @IsDateString()
   earned_at!: string;
+
+  @ApiPropertyOptional({ example: 'uber_notif_1718700000000', description: 'ID externo para deduplicação (gerado pelo cliente)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  external_id?: string;
 }

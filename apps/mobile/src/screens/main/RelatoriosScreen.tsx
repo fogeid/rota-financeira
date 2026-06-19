@@ -9,6 +9,7 @@ import {
 import { useReportsStore } from '../../store/reportsStore';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
 import { formatCurrency } from '../../utils/formatters';
+import { toNumber } from '../../utils/numbers';
 
 type ReportTab = 'current' | 'previous' | 'annual';
 
@@ -106,10 +107,10 @@ export function RelatoriosScreen() {
             </View>
             <StatRow
               label="Custo/km"
-              value={`R$ ${report.cost_per_km.toFixed(2).replace('.', ',')}`}
+              value={report.cost_per_km != null ? `R$ ${toNumber(report.cost_per_km).toFixed(2).replace('.', ',')}` : '—'}
             />
-            <StatRow label="Melhor dia" value={`${report.best_day.date.slice(8)} — ${formatCurrency(report.best_day.net)}`} valueColor={colors.green} />
-            <StatRow label="Pior dia" value={`${report.worst_day.date.slice(8)} — ${formatCurrency(report.worst_day.net)}`} valueColor={colors.red} />
+            <StatRow label="Melhor dia" value={report.best_day ? `${report.best_day.date.slice(8)} — ${formatCurrency(report.best_day.net)}` : '—'} valueColor={colors.green} />
+            <StatRow label="Pior dia" value={report.worst_day ? `${report.worst_day.date.slice(8)} — ${formatCurrency(report.worst_day.net)}` : '—'} valueColor={colors.red} />
           </Card>
 
           {/* Comparativo */}
@@ -118,12 +119,12 @@ export function RelatoriosScreen() {
             <StatRow
               label="Ganho bruto"
               value={formatCurrency(report.gross_income)}
-              delta={report.vs_previous_month.gross_income}
+              delta={toNumber(report.vs_previous_month.gross_income)}
             />
             <StatRow
               label="Lucro líquido"
               value={formatCurrency(report.net_income)}
-              delta={report.vs_previous_month.net_income}
+              delta={toNumber(report.vs_previous_month.net_income)}
             />
           </Card>
 
