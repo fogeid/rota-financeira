@@ -11,29 +11,25 @@ import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { authService } from '../../services/authService';
 import { referralService } from '../../services/referralService';
-import { FormInput, ConfirmButton, AlertBox } from '../../components';
+import { useRegistrationStore } from '../../store/registrationStore';
+import { FormInput, ConfirmButton } from '../../components';
 import { colors, spacing, typography } from '../../theme';
-import { formatCpfInput, stripCpfMask, formatPhoneInput, stripPhoneMask } from '../../utils/formatters';
+import { formatCpfInput, stripCpfMask, stripPhoneMask } from '../../utils/formatters';
 import type { AuthStackParamList } from '../../navigation/AuthNavigator';
+import { registerStep1Schema } from '../../schemas/registerSchemas';
 
-const schema = z.object({
-  name: z.string().min(3, 'Nome deve ter ao menos 3 caracteres'),
-  cpf: z.string().min(14, 'CPF inválido'),
-  phone: z.string().min(10, 'Telefone inválido'),
-});
+const schema = registerStep1Schema;
 
 type FormData = z.infer<typeof schema>;
 type Props = NativeStackScreenProps<AuthStackParamList, 'RegisterStep1'>;
 
 export function RegisterStep1Screen({ navigation }: Props) {
-  const [apiError, setApiError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [referralCode, setReferralCode] = useState('');
   const [referralStatus, setReferralStatus] = useState<'idle' | 'valid' | 'invalid'>('idle');
   const [referrerName, setReferrerName] = useState<string | null>(null);
   const referralTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const setReferralCodeInStore = useRegistrationStore((s) => s.setReferralCode);
 
   useEffect(() => {
     const code = referralCode.trim().toUpperCase();
@@ -63,44 +59,17 @@ export function RegisterStep1Screen({ navigation }: Props) {
   const {
     control,
     handleSubmit,
-    getValues,
     formState: { errors },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
-  async function onSubmit(data: FormData) {
-    setApiError(null);
-    setLoading(true);
-    try {
-      const phone = stripPhoneMask(data.phone);
-      // Store partial data and move to OTP
-      const code = referralCode.trim().toUpperCase();
-      await authService.register({
-        name: data.name,
-        cpf: stripCpfMask(data.cpf),
-        phone,
-        email: '', // filled in step 2
-        password: '', // filled in step 2
-        ...(code.length === 8 ? { referral_code: code } : {}),
-      });
-      navigation.navigate('OTP', {
-        phone,
-        purpose: 'REGISTRATION',
-        name: data.name,
-        cpf: stripCpfMask(data.cpf),
-      });
-    } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } }).response?.status;
-      const msg = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
-      if (status === 409) {
-        setApiError('CPF, telefone ou e-mail já cadastrado.');
-      } else if (status === 400) {
-        setApiError(msg ?? 'Dados inválidos. Verifique os campos.');
-      } else {
-        setApiError('Erro de conexão. Tente novamente.');
-      }
-    } finally {
-      setLoading(false);
-    }
+  function onSubmit(data: FormData) {
+    const code = referralCode.trim().toUpperCase();
+    setReferralCodeInStore(code.length >= 6 ? code : null);
+    navigation.navigate('RegisterStep2', {
+      phone: stripPhoneMask(data.phone),
+      name: data.name,
+      cpf: stripCpfMask(data.cpf),
+    });
   }
 
   return (
@@ -116,8 +85,6 @@ export function RegisterStep1Screen({ navigation }: Props) {
         <Text style={styles.step}>Passo 1 de 4</Text>
         <Text style={styles.title}>Seus dados</Text>
         <Text style={styles.sub}>Vamos começar com suas informações básicas.</Text>
-
-        {apiError ? <AlertBox variant="red" message={apiError} style={styles.alert} /> : null}
 
         <Controller
           control={control}
@@ -187,7 +154,6 @@ export function RegisterStep1Screen({ navigation }: Props) {
         <ConfirmButton
           label="Continuar"
           onPress={handleSubmit(onSubmit)}
-          loading={loading}
           style={styles.btn}
         />
       </ScrollView>
@@ -202,7 +168,6 @@ const styles = StyleSheet.create({
   step: { ...typography.micro, color: colors.green, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
   title: { fontFamily: 'SpaceGrotesk', fontSize: 26, fontWeight: '700', color: colors.text, marginBottom: 8 },
   sub: { ...typography.body, color: colors.text2, marginBottom: 32 },
-  alert: { marginBottom: spacing.lg },
   btn: { marginTop: spacing.md },
   referralValid: { ...typography.small, color: colors.green, marginTop: 4, marginBottom: 4 },
   referralInvalid: { ...typography.small, color: colors.red, marginTop: 4, marginBottom: 4 },
