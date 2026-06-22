@@ -582,3 +582,19 @@ model InfluencerCommission {
   @@unique([influencer_id, reference_month])
   @@map("influencer_commissions")
 }
+
+// Candidaturas públicas ao programa de influencers (sem conta no app).
+// Aprovação manual pela equipe → cria User + InfluencerProfile separadamente.
+model InfluencerApplication {
+  id           String         @id @default(uuid())
+  name         String
+  email        String         @unique
+  channel_name String
+  channel_url  String
+  followers    Int
+  niche        String
+  tier         InfluencerTier
+  created_at   DateTime       @default(now())
+
+  @@map("influencer_applications")
+}

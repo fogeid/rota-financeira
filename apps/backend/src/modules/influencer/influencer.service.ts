@@ -18,7 +18,7 @@ import { TokenService } from '../auth/services/token.service';
 import { ApplyInfluencerDto } from './dto/apply-influencer.dto';
 import { InfluencerLoginDto } from './dto/influencer-login.dto';
 import { UpdatePixKeyDto } from './dto/update-pix-key.dto';
-import { getDefaultCommissionRate, getTierByFollowers } from './influencer.constants';
+import { getTierByFollowers } from './influencer.constants';
 
 @Injectable()
 export class InfluencerService {
@@ -30,35 +30,31 @@ export class InfluencerService {
     @Inject('LOGGER') private readonly logger: LoggerService,
   ) {}
 
-  async apply(userId: string, dto: ApplyInfluencerDto) {
-    const existing = await this.prisma.influencerProfile.findUnique({ where: { user_id: userId } });
+  async apply(dto: ApplyInfluencerDto) {
+    const existing = await this.prisma.influencerApplication.findUnique({
+      where: { email: dto.email.toLowerCase() },
+    });
     if (existing) {
-      throw new ConflictException('Candidatura já enviada anteriormente');
+      throw new ConflictException('Candidatura já enviada para este e-mail');
     }
 
     const tier = getTierByFollowers(dto.followers);
-    const commissionRate = getDefaultCommissionRate(tier);
 
-    await this.prisma.influencerProfile.create({
+    await this.prisma.influencerApplication.create({
       data: {
-        user_id: userId,
+        name: dto.name,
+        email: dto.email.toLowerCase(),
         channel_name: dto.channel_name,
         channel_url: dto.channel_url,
         followers: dto.followers,
         niche: dto.niche,
         tier,
-        commission_rate: commissionRate,
-        status: InfluencerStatus.PENDING,
       },
     });
 
-    this.logger.log({ message: 'Candidatura de influencer recebida', userId, tier });
+    this.logger.log({ message: 'Candidatura de influencer recebida', email: dto.email, tier });
 
-    return {
-      message: 'Candidatura enviada! Entraremos em contato em até 3 dias úteis.',
-      tier,
-      commission_rate: commissionRate,
-    };
+    return { message: 'Solicitação recebida. Retornaremos em até 3 dias úteis.' };
   }
 
   async getMyProfile(userId: string) {
