@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, IsStrongPassword, Length, MaxLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, IsStrongPassword, Length, MaxLength, Matches } from 'class-validator';
 import { IsCpf } from '../../../common/validators/cpf.validator';
 import { IsBrazilianPhone } from '../../../common/validators/phone.validator';
 
@@ -32,4 +32,10 @@ export class RegisterDto {
     { message: 'Senha deve ter no mínimo 8 caracteres, com letra maiúscula, minúscula, número e símbolo' },
   )
   password!: string;
+
+  @ApiPropertyOptional({ example: 'CARLOS22' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Z0-9]{8}$/, { message: 'Código de indicação inválido' })
+  referral_code?: string;
 }

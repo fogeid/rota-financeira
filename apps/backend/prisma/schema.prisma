@@ -44,6 +44,11 @@ model User {
   refresh_tokens    RefreshToken[]
   login_attempts    LoginAttempt[]
   alert_preferences AlertPreference[]
+  referral_code           ReferralCode?
+  referral_balance        ReferralBalance?
+  referred_by             Referral?             @relation("ReferredUser")
+  referral_withdrawals    ReferralWithdrawal[]
+  influencer_profile      InfluencerProfile?
 
   @@map("users")
 }
@@ -327,6 +332,8 @@ enum NotificationType {
   PAYMENT_APPROVED
   PAYMENT_FAILED
   TRIAL_EXPIRING
+  CASHBACK_PENDING
+  CASHBACK_AVAILABLE
 }
 
 model AlertPreference {
@@ -436,4 +443,141 @@ enum PaymentMethod {
   CREDIT_CARD
   DEBIT_CARD
   PIX
+}
+
+// ─────────────────────────────────────────
+// PROGRAMA DE INDICAÇÃO
+// ─────────────────────────────────────────
+
+model ReferralCode {
+  id          String       @id @default(uuid())
+  user_id     String       @unique
+  code        String       @unique
+  slug        String?      @unique
+  type        ReferralType @default(USER)
+  clicks      Int          @default(0)
+  created_at  DateTime     @default(now())
+
+  user        User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  referrals   Referral[]
+
+  @@map("referral_codes")
+}
+
+enum ReferralType {
+  USER
+  INFLUENCER
+}
+
+model Referral {
+  id                String         @id @default(uuid())
+  referral_code_id  String
+  referred_user_id  String         @unique
+  status            ReferralStatus @default(REGISTERED)
+  cashback_amount   Decimal?       @db.Decimal(6,2)
+  cashback_paid_at  DateTime?
+  converted_at      DateTime?
+  created_at        DateTime       @default(now())
+  updated_at        DateTime       @updatedAt
+
+  referral_code     ReferralCode   @relation(fields: [referral_code_id], references: [id])
+  referred_user     User           @relation("ReferredUser", fields: [referred_user_id], references: [id])
+
+  @@index([referral_code_id])
+  @@map("referrals")
+}
+
+enum ReferralStatus {
+  REGISTERED
+  TRIAL
+  CONVERTED
+  INACTIVE
+}
+
+model ReferralBalance {
+  id              String   @id @default(uuid())
+  user_id         String   @unique
+  available       Decimal  @db.Decimal(10,2) @default(0)
+  pending         Decimal  @db.Decimal(10,2) @default(0)
+  total_earned    Decimal  @db.Decimal(10,2) @default(0)
+  total_withdrawn Decimal  @db.Decimal(10,2) @default(0)
+  conversions     Int      @default(0)
+  updated_at      DateTime @updatedAt
+
+  user            User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("referral_balances")
+}
+
+model ReferralWithdrawal {
+  id           String           @id @default(uuid())
+  user_id      String
+  amount       Decimal          @db.Decimal(10,2)
+  pix_key      String
+  status       WithdrawalStatus @default(PENDING)
+  processed_at DateTime?
+  created_at   DateTime         @default(now())
+
+  user         User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("referral_withdrawals")
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+model InfluencerProfile {
+  id                 String           @id @default(uuid())
+  user_id            String           @unique
+  channel_name       String
+  channel_url        String
+  followers          Int
+  niche              String
+  tier               InfluencerTier
+  status             InfluencerStatus @default(PENDING)
+  commission_rate    Decimal          @db.Decimal(4,2)
+  bonus_threshold    Int?
+  bonus_amount       Decimal?         @db.Decimal(8,2)
+  approved_at        DateTime?
+  contract_signed_at DateTime?
+  created_at         DateTime         @default(now())
+
+  user               User                   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  commissions        InfluencerCommission[]
+
+  @@map("influencer_profiles")
+}
+
+enum InfluencerTier {
+  MICRO
+  MEDIUM
+  LARGE
+  EXCLUSIVE
+}
+
+enum InfluencerStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+  REJECTED
+}
+
+model InfluencerCommission {
+  id                 String           @id @default(uuid())
+  influencer_id      String
+  reference_month    DateTime         @db.Date
+  active_subscribers Int
+  commission_amount  Decimal          @db.Decimal(10,2)
+  status             WithdrawalStatus @default(PENDING)
+  paid_at            DateTime?
+  created_at         DateTime         @default(now())
+
+  influencer         InfluencerProfile @relation(fields: [influencer_id], references: [id])
+
+  @@unique([influencer_id, reference_month])
+  @@map("influencer_commissions")
 }
