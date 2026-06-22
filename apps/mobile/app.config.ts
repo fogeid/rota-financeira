@@ -27,6 +27,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     bundler: 'metro',
   },
   plugins: [
+    '@sentry/react-native',
     'expo-secure-store',
     'expo-sharing',
     'expo-splash-screen',
