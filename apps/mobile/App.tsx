@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react-native';
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -15,8 +16,18 @@ import {
   SpaceGrotesk_700Bold,
 } from '@expo-google-fonts/space-grotesk';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { QueryProvider } from './src/providers/QueryProvider';
 import { useAuthStore } from './src/store/authStore';
 import { useNotificationListener } from './src/hooks/useNotificationListener';
+
+// Inicializa Sentry antes de qualquer render — docs/02-TECH-STACK.md seção 3
+if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+    environment: process.env.NODE_ENV ?? 'development',
+    tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+  });
+}
 
 SplashScreen.preventAutoHideAsync();
 
@@ -43,11 +54,13 @@ export default function App() {
   if (!fontsLoaded) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <StatusBar style="light" />
-        <RootNavigator />
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <QueryProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <StatusBar style="light" />
+          <RootNavigator />
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </QueryProvider>
   );
 }
