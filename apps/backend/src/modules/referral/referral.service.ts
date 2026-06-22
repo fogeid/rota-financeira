@@ -3,10 +3,10 @@ import {
   Inject,
   Injectable,
   LoggerService,
-  NotFoundException,
 } from '@nestjs/common';
 import { NotificationType, ReferralStatus, ReferralType, WithdrawalStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CacheService } from '../../cache/cache.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
   MIN_WITHDRAWAL_AMOUNT,
@@ -15,6 +15,8 @@ import {
   getNextLevelAt,
 } from './referral.constants';
 import { WithdrawDto } from './dto/withdraw.dto';
+
+const referralCacheKey = (userId: string) => `referral:me:${userId}`;
 
 function maskName(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -26,6 +28,7 @@ function maskName(name: string): string {
 export class ReferralService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
     private readonly notifications: NotificationsService,
     @Inject('LOGGER') private readonly logger: LoggerService,
   ) {}
@@ -149,6 +152,8 @@ export class ReferralService {
       body: `R$ ${cashbackAmount.toFixed(2).replace('.', ',')} de cashback ficará disponível em 30 dias.`,
     });
 
+    await this.cache.del(referralCacheKey(referral.referral_code.user_id));
+
     this.logger.log({
       message: 'Cashback pendente creditado',
       referrerUserId: referral.referral_code.user_id,
@@ -203,7 +208,11 @@ export class ReferralService {
   }
 
   async getMyReferral(userId: string) {
-    const [code, balance, referrals] = await Promise.all([
+    const cacheKey = referralCacheKey(userId);
+    const cached = await this.cache.get<object>(cacheKey);
+    if (cached) return cached;
+
+    let [code, balance, referrals] = await Promise.all([
       this.prisma.referralCode.findUnique({ where: { user_id: userId } }),
       this.prisma.referralBalance.findUnique({ where: { user_id: userId } }),
       this.prisma.referral.findMany({
@@ -213,13 +222,23 @@ export class ReferralService {
       }),
     ]);
 
-    if (!code) throw new NotFoundException('Código de indicação não encontrado');
+    if (!code) {
+      // Usuário legado sem código (cadastrado antes da geração automática).
+      // Auto-recuperação: criar agora em vez de retornar 404.
+      const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+      await this.initForNewUser(userId, user?.name ?? 'USER');
+      [code, balance] = await Promise.all([
+        this.prisma.referralCode.findUnique({ where: { user_id: userId } }),
+        this.prisma.referralBalance.findUnique({ where: { user_id: userId } }),
+      ]);
+      referrals = [];
+    }
 
     const conversions = balance?.conversions ?? 0;
 
-    return {
-      code: code.code,
-      link: `https://rotafinanceira.app/i/${code.code}`,
+    const result = {
+      code: code!.code,
+      link: `https://rotafinanceira.app/i/${code!.code}`,
       level: getReferralLevel(conversions),
       conversions,
       next_level_at: getNextLevelAt(conversions),
@@ -235,6 +254,9 @@ export class ReferralService {
         converted_at: r.converted_at,
       })),
     };
+
+    await this.cache.set(cacheKey, result, 300); // cache 5min
+    return result;
   }
 
   async validateCode(code: string) {
@@ -287,6 +309,8 @@ export class ReferralService {
     if (monthCount >= 10) {
       this.logger.warn({ message: 'Saque requer revisão manual', userId, monthlyCount: monthCount + 1 });
     }
+
+    await this.cache.del(referralCacheKey(userId));
 
     return {
       message: 'Saque solicitado. PIX será enviado em até 1 dia útil.',
