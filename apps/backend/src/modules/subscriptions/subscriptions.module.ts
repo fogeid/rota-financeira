@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { PlanGuard } from '../../common/guards/plan.guard';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ReferralModule } from '../referral/referral.module';
 import { SUBSCRIPTION_QUEUE } from './subscriptions.constants';
 import { PagarmeService } from './pagarme.service';
 import { SubscriptionsController } from './subscriptions.controller';
@@ -12,6 +13,7 @@ import { SubscriptionSchedulerService } from './workers/subscription-scheduler.s
 @Module({
   imports: [
     NotificationsModule,
+    ReferralModule,
     BullModule.registerQueue({ name: SUBSCRIPTION_QUEUE }),
   ],
   controllers: [SubscriptionsController],

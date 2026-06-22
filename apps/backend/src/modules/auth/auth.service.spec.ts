@@ -97,6 +97,7 @@ describe('AuthService', () => {
       otpResendThrottle as unknown as OtpResendThrottleService,
       loginThrottle as unknown as LoginThrottleService,
       pendingRegistration as unknown as PendingRegistrationService,
+      { initForNewUser: jest.fn().mockResolvedValue(undefined), processReferralOnRegister: jest.fn().mockResolvedValue(null) } as unknown as import('../referral/referral.service').ReferralService,
     );
   });
 

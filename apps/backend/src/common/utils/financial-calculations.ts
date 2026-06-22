@@ -232,7 +232,7 @@ export function calculateProjection(monthlyValues: number[]): number | null {
 
 /** Retorna o primeiro dia do mês em UTC para uma data. */
 export function firstDayOfMonth(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+  return new Date(date.getFullYear(), date.getMonth(), 1);
 }
 
 /** Retorna o último dia do mês em UTC para uma data. */

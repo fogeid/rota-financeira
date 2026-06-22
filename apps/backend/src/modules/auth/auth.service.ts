@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { OtpPurpose, Plan } from '@prisma/client';
+import { ReferralService } from '../referral/referral.service';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EncryptionService } from '../../common/services/encryption.service';
@@ -42,6 +43,7 @@ export class AuthService {
     private readonly otpResendThrottle: OtpResendThrottleService,
     private readonly loginThrottle: LoginThrottleService,
     private readonly pendingRegistration: PendingRegistrationService,
+    private readonly referralService: ReferralService,
   ) {}
 
   /** POST /auth/register — valida unicidade e envia OTP. Usuário só é criado na confirmação. */
@@ -70,6 +72,7 @@ export class AuthService {
       phone: this.encryption.encrypt(dto.phone),
       phone_hash: phoneHash,
       password_hash: passwordHash,
+      referral_code: dto.referral_code,
     });
 
     await this.otpService.generateAndSend({ phone: dto.phone, phoneHash, purpose: OtpPurpose.REGISTRATION });
@@ -98,6 +101,9 @@ export class AuthService {
 
     await this.otpService.markUsed(result.otp.id);
 
+    // Trial padrão: 14 dias para todos os novos usuários (ajustado abaixo se veio de indicação USER)
+    const defaultTrialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
     const user = await this.prisma.user.create({
       data: {
         name: pending.name,
@@ -108,8 +114,24 @@ export class AuthService {
         phone: pending.phone,
         phone_hash: pending.phone_hash,
         password_hash: pending.password_hash,
+        trial_ends_at: defaultTrialEndsAt,
       },
     });
+
+    // Inicializa saldo e código de indicação do novo usuário
+    await this.referralService.initForNewUser(user.id, user.name);
+
+    // Processa indicação recebida (se informou código)
+    if (pending.referral_code) {
+      const result = await this.referralService.processReferralOnRegister(user.id, pending.referral_code);
+      if (result && result.trialDays !== 14) {
+        // Código de motorista USER dá apenas 7 dias (default já era 14 para influencer/sem código)
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { trial_ends_at: new Date(Date.now() + result.trialDays * 24 * 60 * 60 * 1000) },
+        });
+      }
+    }
 
     await this.pendingRegistration.delete(phoneHash);
 
