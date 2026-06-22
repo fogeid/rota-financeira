@@ -1,7 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsString, IsUrl, Min } from 'class-validator';
+import { IsEmail, IsInt, IsNotEmpty, IsString, IsUrl, Min } from 'class-validator';
 
 export class ApplyInfluencerDto {
+  @ApiProperty({ example: 'Zé Motorista' })
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
+
+  @ApiProperty({ example: 'ze@canal.com' })
+  @IsEmail()
+  email!: string;
+
   @ApiProperty({ example: 'Canal do Carlos' })
   @IsString()
   @IsNotEmpty()
@@ -13,7 +22,7 @@ export class ApplyInfluencerDto {
 
   @ApiProperty({ example: 25000 })
   @IsInt()
-  @Min(1000, { message: 'Mínimo de 1.000 seguidores para candidatura' })
+  @Min(5000, { message: 'Mínimo de 5.000 seguidores para candidatura' })
   followers!: number;
 
   @ApiProperty({ example: 'finanças pessoais, motoristas de app' })

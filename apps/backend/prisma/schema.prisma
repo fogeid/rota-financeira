@@ -172,7 +172,7 @@ model Earning {
   user        User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, platform, external_id])  // Evita duplicata no sync
-  @@index([user_id, earned_at])
+  @@index([user_id, earned_at(sort: Desc)])
   @@index([user_id, platform])
   @@map("earnings")
 }
@@ -207,8 +207,8 @@ model Cost {
   fuel_log    FuelLog?
   maintenance MaintenanceLog?
 
-  @@index([user_id, cost_date])
-  @@index([user_id, type])
+  @@index([user_id, cost_date(sort: Desc)])
+  @@index([user_id, type, cost_date(sort: Desc)])
   @@map("costs")
 }
 
@@ -315,7 +315,7 @@ model Notification {
 
   user        User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  @@index([user_id, created_at])
+  @@index([user_id, read_at, created_at(sort: Desc)])
   @@map("notifications")
 }
 
@@ -483,7 +483,7 @@ model Referral {
   referral_code     ReferralCode   @relation(fields: [referral_code_id], references: [id])
   referred_user     User           @relation("ReferredUser", fields: [referred_user_id], references: [id])
 
-  @@index([referral_code_id])
+  @@index([referral_code_id, status])
   @@map("referrals")
 }
 
@@ -542,6 +542,7 @@ model InfluencerProfile {
   commission_rate    Decimal          @db.Decimal(4,2)
   bonus_threshold    Int?
   bonus_amount       Decimal?         @db.Decimal(8,2)
+  pix_key            String?
   approved_at        DateTime?
   contract_signed_at DateTime?
   created_at         DateTime         @default(now())
@@ -580,4 +581,20 @@ model InfluencerCommission {
 
   @@unique([influencer_id, reference_month])
   @@map("influencer_commissions")
+}
+
+// Candidaturas públicas ao programa de influencers (sem conta no app).
+// Aprovação manual pela equipe → cria User + InfluencerProfile separadamente.
+model InfluencerApplication {
+  id           String         @id @default(uuid())
+  name         String
+  email        String         @unique
+  channel_name String
+  channel_url  String
+  followers    Int
+  niche        String
+  tier         InfluencerTier
+  created_at   DateTime       @default(now())
+
+  @@map("influencer_applications")
 }
