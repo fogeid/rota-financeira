@@ -8,6 +8,8 @@ import { CartaoScreen } from '../screens/main/CartaoScreen';
 import { PixScreen } from '../screens/main/PixScreen';
 import { PaymentSuccessScreen } from '../screens/main/PaymentSuccessScreen';
 import { ImportCSVScreen } from '../screens/integrations/ImportCSVScreen';
+import { RotaIndicaScreen } from '../screens/referral/RotaIndicaScreen';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 export type MainStackParamList = {
   Tabs: undefined;
@@ -17,6 +19,7 @@ export type MainStackParamList = {
   Pix: { planId: 'premium_yearly' };
   PaymentSuccess: { method: 'card' | 'pix'; planId: string };
   ImportCSV: { platform: string };
+  RotaIndica: undefined;
 };
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -46,6 +49,12 @@ export function MainStack() {
         component={ImportCSVScreen}
         options={{ title: 'Importar histórico' }}
       />
+      <Stack.Screen
+        name="RotaIndica"
+        options={{ title: 'Rota Indica' }}
+      >
+        {() => <ErrorBoundary fallbackTitle="Erro na tela Rota Indica"><RotaIndicaScreen /></ErrorBoundary>}
+      </Stack.Screen>
     </Stack.Navigator>
   );
 }
