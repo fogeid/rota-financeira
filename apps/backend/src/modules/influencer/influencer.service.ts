@@ -7,7 +7,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { InfluencerStatus, ReferralType, WithdrawalStatus } from '@prisma/client';
+import { InfluencerStatus, WithdrawalStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -134,7 +134,7 @@ export class InfluencerService {
       include: {
         user: {
           include: {
-            referral_code: { where: { type: ReferralType.INFLUENCER } },
+            referral_code: true,
           },
         },
         commissions: {
@@ -261,9 +261,7 @@ export class InfluencerService {
       include: {
         user: {
           include: {
-            referral_code: {
-              where: { type: ReferralType.INFLUENCER },
-            },
+            referral_code: true,
           },
         },
       },
