@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { InfluencerService } from './influencer.service';
 import { ApplyInfluencerDto } from './dto/apply-influencer.dto';
 import { InfluencerLoginDto } from './dto/influencer-login.dto';
@@ -17,14 +18,14 @@ export class InfluencerController {
 
   @Post('apply')
   @ApiOperation({ summary: 'Candidatura para programa de influencers' })
-  apply(@CurrentUser('id') userId: string, @Body() dto: ApplyInfluencerDto) {
-    return this.influencerService.apply(userId, dto);
+  apply(@CurrentUser() user: AuthenticatedUser, @Body() dto: ApplyInfluencerDto) {
+    return this.influencerService.apply(user.sub, dto);
   }
 
   @Get('me')
   @ApiOperation({ summary: 'Perfil e histórico de comissões do influencer' })
-  getMyProfile(@CurrentUser('id') userId: string) {
-    return this.influencerService.getMyProfile(userId);
+  getMyProfile(@CurrentUser() user: AuthenticatedUser) {
+    return this.influencerService.getMyProfile(user.sub);
   }
 
   @Post('auth/login')
@@ -36,13 +37,13 @@ export class InfluencerController {
 
   @Get('dashboard')
   @ApiOperation({ summary: 'Dashboard completo do influencer (apenas APPROVED)' })
-  getDashboard(@CurrentUser('id') userId: string) {
-    return this.influencerService.getDashboard(userId);
+  getDashboard(@CurrentUser() user: AuthenticatedUser) {
+    return this.influencerService.getDashboard(user.sub);
   }
 
   @Patch('pix-key')
   @ApiOperation({ summary: 'Cadastra ou atualiza chave PIX do influencer' })
-  updatePixKey(@CurrentUser('id') userId: string, @Body() dto: UpdatePixKeyDto) {
-    return this.influencerService.updatePixKey(userId, dto);
+  updatePixKey(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdatePixKeyDto) {
+    return this.influencerService.updatePixKey(user.sub, dto);
   }
 }
