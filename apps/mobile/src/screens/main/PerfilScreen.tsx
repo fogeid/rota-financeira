@@ -12,6 +12,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
 import { useFinancingStore } from '../../store/financingStore';
 import { integrationsService } from '../../services/integrationsService';
+import { useReferralStore } from '../../store/referralStore';
 import { NotificationPermissionScreen } from '../permissions/NotificationPermissionScreen';
 import { NotificationListener } from '../../../modules/notification-listener/src';
 import { usersService } from '../../services/usersService';
@@ -713,6 +714,9 @@ export function PerfilScreen() {
   const isPro = useSubscriptionStore((s) => s.isPro());
   const loadFinancing = useFinancingStore((s) => s.load);
 
+  const referralBalance = useReferralStore((s) => s.data?.balance.available ?? 0);
+  const fetchReferral = useReferralStore((s) => s.fetchReferral);
+
   const [platforms, setPlatforms] = useState<IntegrationStatus[]>([]);
   const [connectPlatform, setConnectPlatform] = useState<'UBER' | 'NOVENTA_E_NOVE' | null>(null);
   const [disconnectPlatform, setDisconnectPlatform] = useState<'UBER' | 'NOVENTA_E_NOVE' | null>(null);
@@ -739,6 +743,7 @@ export function PerfilScreen() {
 
   useEffect(() => {
     loadSubscription();
+    fetchReferral();
     alertsService.getPreferences().then((res) => setAlertPrefs(res.preferences)).catch(() => {});
     vehiclesService.getVehicle().then(setVehicle).catch(() => {});
   }, []);
@@ -974,6 +979,18 @@ export function PerfilScreen() {
           toggle
           toggleValue={biometryEnabled}
           onToggle={setBiometryEnabled}
+          isLast
+        />
+      </Card>
+
+      {/* Rota Indica */}
+      <Text style={styles.sectionLabel}>Programa de indicação</Text>
+      <Card>
+        <SettingRow
+          icon="gift-outline"
+          label="Rota Indica"
+          value={referralBalance > 0 ? `R$ ${referralBalance.toFixed(2).replace('.', ',')}` : undefined}
+          onPress={() => navigation.navigate('RotaIndica')}
           isLast
         />
       </Card>
