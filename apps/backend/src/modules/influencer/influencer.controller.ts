@@ -17,9 +17,10 @@ export class InfluencerController {
   constructor(private readonly influencerService: InfluencerService) {}
 
   @Post('apply')
-  @ApiOperation({ summary: 'Candidatura para programa de influencers' })
-  apply(@CurrentUser() user: AuthenticatedUser, @Body() dto: ApplyInfluencerDto) {
-    return this.influencerService.apply(user.sub, dto);
+  @Public()
+  @ApiOperation({ summary: 'Candidatura para programa de influencers (público)' })
+  apply(@Body() dto: ApplyInfluencerDto) {
+    return this.influencerService.apply(dto);
   }
 
   @Get('me')
