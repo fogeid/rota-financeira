@@ -13,7 +13,7 @@ export class ApplyInfluencerDto {
 
   @ApiProperty({ example: 25000 })
   @IsInt()
-  @Min(1000, { message: 'Mínimo de 1.000 seguidores para candidatura' })
+  @Min(5000, { message: 'Mínimo de 5.000 seguidores para candidatura' })
   followers!: number;
 
   @ApiProperty({ example: 'finanças pessoais, motoristas de app' })
