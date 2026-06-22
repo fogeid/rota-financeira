@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ReferralStatus, ReferralType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CacheService } from '../../cache/cache.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ReferralService } from './referral.service';
 import { calculateCashback, getReferralLevel, getNextLevelAt } from './referral.constants';
@@ -36,6 +37,9 @@ describe('referral.constants', () => {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockPrisma: any = {
+  user: {
+    findUnique: jest.fn(),
+  },
   referralCode: {
     findUnique: jest.fn(),
     create: jest.fn(),
@@ -68,6 +72,11 @@ const mockPrisma: any = {
 
 const mockNotifications = { create: jest.fn() };
 const mockLogger = { log: jest.fn(), warn: jest.fn(), error: jest.fn() };
+const mockCache = {
+  get: jest.fn().mockResolvedValue(null),
+  set: jest.fn().mockResolvedValue(undefined),
+  del: jest.fn().mockResolvedValue(undefined),
+};
 
 describe('ReferralService', () => {
   let service: ReferralService;
@@ -79,6 +88,7 @@ describe('ReferralService', () => {
       providers: [
         ReferralService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: CacheService, useValue: mockCache },
         { provide: NotificationsService, useValue: mockNotifications },
         { provide: 'LOGGER', useValue: mockLogger },
       ],
@@ -185,6 +195,57 @@ describe('ReferralService', () => {
       await service.handlePaymentConversion('user-3');
       expect(mockPrisma.referral.update).toHaveBeenCalled();
       expect(mockPrisma.referralBalance.findUnique).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── getMyReferral ───────────────────────────────────────────────────────────
+
+  describe('getMyReferral', () => {
+    it('retorna dados do cache quando disponível', async () => {
+      const cached = { code: 'CACHED1', conversions: 0 };
+      mockCache.get.mockResolvedValueOnce(cached);
+      const result = await service.getMyReferral('user-1');
+      expect(result).toEqual(cached);
+      expect(mockPrisma.referralCode.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('auto-cria código para usuário legado sem código (self-healing)', async () => {
+      mockCache.get.mockResolvedValueOnce(null);
+      // Chamadas a referralCode.findUnique:
+      //   1) busca inicial (Promise.all) → null (sem código)
+      //   2) dentro de generateUniqueCode (verificar unicidade) → null (código livre)
+      //   3) re-fetch pós-criação → código criado
+      mockPrisma.referralCode.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ user_id: 'user-1', code: 'LEGADO22' });
+      mockPrisma.referralBalance.findUnique
+        .mockResolvedValueOnce(null) // busca inicial
+        .mockResolvedValueOnce({ user_id: 'user-1', conversions: 0, available: 0, pending: 0, total_earned: 0, total_withdrawn: 0 }); // pós-criação
+      mockPrisma.referral.findMany.mockResolvedValueOnce([]);
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ name: 'Legado Silva' });
+      mockPrisma.$transaction.mockResolvedValueOnce([]);
+
+      const result = await service.getMyReferral('user-1');
+
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({ where: { id: 'user-1' }, select: { name: true } });
+      expect(mockPrisma.$transaction).toHaveBeenCalled();
+      expect((result as Record<string, unknown>).code).toBe('LEGADO22');
+    });
+
+    it('retorna dados completos quando código existe', async () => {
+      mockCache.get.mockResolvedValueOnce(null);
+      mockPrisma.referralCode.findUnique.mockResolvedValueOnce({ user_id: 'user-1', code: 'CARLO33' });
+      mockPrisma.referralBalance.findUnique.mockResolvedValueOnce({
+        user_id: 'user-1', conversions: 0, available: 10, pending: 0, total_earned: 10, total_withdrawn: 0,
+      });
+      mockPrisma.referral.findMany.mockResolvedValueOnce([]);
+
+      const result = await service.getMyReferral('user-1') as Record<string, unknown>;
+
+      expect(result.code).toBe('CARLO33');
+      expect(result.level).toBe('INICIANTE');
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
     });
   });
 
