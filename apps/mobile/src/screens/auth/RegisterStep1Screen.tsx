@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { authService } from '../../services/authService';
+import { referralService } from '../../services/referralService';
 import { FormInput, ConfirmButton, AlertBox } from '../../components';
 import { colors, spacing, typography } from '../../theme';
 import { formatCpfInput, stripCpfMask, formatPhoneInput, stripPhoneMask } from '../../utils/formatters';
@@ -29,6 +30,35 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'RegisterStep1'>;
 export function RegisterStep1Screen({ navigation }: Props) {
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [referralCode, setReferralCode] = useState('');
+  const [referralStatus, setReferralStatus] = useState<'idle' | 'valid' | 'invalid'>('idle');
+  const [referrerName, setReferrerName] = useState<string | null>(null);
+  const referralTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const code = referralCode.trim().toUpperCase();
+    if (referralTimer.current) clearTimeout(referralTimer.current);
+    if (!code || code.length < 8) {
+      setReferralStatus('idle');
+      setReferrerName(null);
+      return;
+    }
+    referralTimer.current = setTimeout(async () => {
+      try {
+        const res = await referralService.validateCode(code);
+        if (res.valid) {
+          setReferralStatus('valid');
+          setReferrerName(res.referrer_name ?? null);
+        } else {
+          setReferralStatus('invalid');
+          setReferrerName(null);
+        }
+      } catch {
+        setReferralStatus('idle');
+      }
+    }, 600);
+    return () => { if (referralTimer.current) clearTimeout(referralTimer.current); };
+  }, [referralCode]);
 
   const {
     control,
@@ -43,12 +73,14 @@ export function RegisterStep1Screen({ navigation }: Props) {
     try {
       const phone = stripPhoneMask(data.phone);
       // Store partial data and move to OTP
+      const code = referralCode.trim().toUpperCase();
       await authService.register({
         name: data.name,
         cpf: stripCpfMask(data.cpf),
         phone,
         email: '', // filled in step 2
         password: '', // filled in step 2
+        ...(code.length === 8 ? { referral_code: code } : {}),
       });
       navigation.navigate('OTP', {
         phone,
@@ -135,6 +167,23 @@ export function RegisterStep1Screen({ navigation }: Props) {
           )}
         />
 
+        <FormInput
+          label="Código de indicação (opcional)"
+          placeholder="Tem um código? Digite aqui (opcional)"
+          autoCapitalize="characters"
+          maxLength={8}
+          value={referralCode}
+          onChangeText={(t) => setReferralCode(t.toUpperCase())}
+        />
+        {referralStatus === 'valid' && referrerName && (
+          <Text style={styles.referralValid}>
+            Código válido! Indicação de {referrerName}. Você ganhará 7 dias de Premium.
+          </Text>
+        )}
+        {referralStatus === 'invalid' && (
+          <Text style={styles.referralInvalid}>Código inválido. Verifique e tente novamente.</Text>
+        )}
+
         <ConfirmButton
           label="Continuar"
           onPress={handleSubmit(onSubmit)}
@@ -155,4 +204,6 @@ const styles = StyleSheet.create({
   sub: { ...typography.body, color: colors.text2, marginBottom: 32 },
   alert: { marginBottom: spacing.lg },
   btn: { marginTop: spacing.md },
+  referralValid: { ...typography.small, color: colors.green, marginTop: 4, marginBottom: 4 },
+  referralInvalid: { ...typography.small, color: colors.red, marginTop: 4, marginBottom: 4 },
 });
