@@ -11,6 +11,7 @@ export interface RegisterPayload {
   phone: string;
   email: string;
   password: string;
+  referral_code?: string;
 }
 
 export interface AuthResponse {
