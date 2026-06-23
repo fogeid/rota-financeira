@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { OtpCode, OtpPurpose } from '@prisma/client';
 import { sha256Hex } from '../../../common/utils/hash.util';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -14,6 +15,7 @@ describe('OtpService', () => {
     };
   };
   let delivery: { send: jest.Mock };
+  let config: { get: jest.Mock };
 
   const phoneHash = 'phone-hash';
 
@@ -26,8 +28,13 @@ describe('OtpService', () => {
       },
     };
     delivery = { send: jest.fn().mockResolvedValue(undefined) };
+    config = { get: jest.fn().mockReturnValue(undefined) };
 
-    service = new OtpService(prisma as unknown as PrismaService, delivery as unknown as OtpDeliveryService);
+    service = new OtpService(
+      prisma as unknown as PrismaService,
+      delivery as unknown as OtpDeliveryService,
+      config as unknown as ConfigService,
+    );
   });
 
   describe('generateAndSend', () => {

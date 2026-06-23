@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { OtpCode, OtpPurpose } from '@prisma/client';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -23,6 +24,7 @@ export class OtpService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly delivery: OtpDeliveryService,
+    private readonly config: ConfigService,
   ) {}
 
   private generateCode(): string {
@@ -31,7 +33,10 @@ export class OtpService {
 
   /** Gera um novo código OTP, persiste o hash e envia ao usuário. */
   async generateAndSend(params: { phone: string; phoneHash: string; purpose: OtpPurpose; userId?: string }): Promise<OtpCode> {
-    const code = this.generateCode();
+    const bypassMode = this.config.get<string>('OTP_BYPASS_MODE') === 'true';
+    const code = bypassMode
+      ? (this.config.get<string>('OTP_BYPASS_CODE') ?? this.generateCode())
+      : this.generateCode();
 
     const otp = await this.prisma.otpCode.create({
       data: {

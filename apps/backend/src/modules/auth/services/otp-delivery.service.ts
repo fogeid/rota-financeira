@@ -1,17 +1,56 @@
 import { Inject, Injectable, LoggerService } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { OtpPurpose } from '@prisma/client';
 
-/**
- * Envio de códigos OTP por SMS. O provedor de SMS ainda não está definido em
- * docs/02-TECH-STACK.md — esta implementação é um stub que NUNCA loga o código
- * ou o telefone (docs/05-SECURITY.md seção 9), pronta para ser substituída por
- * uma integração real (ex: Twilio, Zenvia) sem alterar OtpService.
- */
 @Injectable()
 export class OtpDeliveryService {
-  constructor(@Inject('LOGGER') private readonly logger: LoggerService) {}
+  constructor(
+    private readonly config: ConfigService,
+    @Inject('LOGGER') private readonly logger: LoggerService,
+  ) {}
 
-  async send(_phone: string, _code: string, purpose: OtpPurpose): Promise<void> {
-    this.logger.log(`OTP gerado para envio (purpose=${purpose})`);
+  async send(phone: string, code: string, purpose: OtpPurpose): Promise<void> {
+    const bypassMode = this.config.get<string>('OTP_BYPASS_MODE') === 'true';
+    const nodeEnv = this.config.get<string>('NODE_ENV');
+
+    if (bypassMode && nodeEnv === 'production') {
+      throw new Error('OTP_BYPASS_MODE não pode estar ativo em produção');
+    }
+
+    if (bypassMode) {
+      this.logger.warn(`[DEV] OTP bypass ativo — SMS não enviado (purpose=${purpose})`);
+      return;
+    }
+
+    await this.sendViaZenvia(phone, code);
+    this.logger.log(`SMS OTP enviado (purpose=${purpose})`);
+  }
+
+  private async sendViaZenvia(phone: string, code: string): Promise<void> {
+    const apiToken = this.config.get<string>('ZENVIA_API_TOKEN');
+    if (!apiToken) {
+      throw new Error('ZENVIA_API_TOKEN não configurado — configure o .env ou ative OTP_BYPASS_MODE=true para desenvolvimento');
+    }
+
+    const e164 = phone.startsWith('+') ? phone : `+55${phone.replace(/\D/g, '')}`;
+    const message = `Seu código Rota Financeira: ${code}. Válido por 5 minutos. Não compartilhe.`;
+
+    const response = await fetch('https://api.zenvia.com/v2/channels/sms/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-TOKEN': apiToken,
+      },
+      body: JSON.stringify({
+        from: 'RotaFinanceira',
+        to: e164,
+        contents: [{ type: 'text', text: message }],
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Zenvia erro ${response.status}: ${body}`);
+    }
   }
 }
