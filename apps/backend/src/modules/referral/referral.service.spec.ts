@@ -183,7 +183,26 @@ describe('ReferralService', () => {
 
       const txOps = mockPrisma.$transaction.mock.calls[0][0];
       expect(txOps).toHaveLength(2);
-      expect(mockNotifications.create).toHaveBeenCalledWith('referrer-1', expect.objectContaining({ title: 'Nova conversão!' }));
+      expect(mockNotifications.create).toHaveBeenCalledWith('referrer-1', expect.objectContaining({
+        title: 'Cashback disponível!',
+        type: 'CASHBACK_AVAILABLE',
+      }));
+    });
+
+    it('credita cashback direto em available após conversão (sem espera)', async () => {
+      mockPrisma.referral.findUnique.mockResolvedValue({
+        id: 'r1', status: ReferralStatus.TRIAL,
+        referral_code: { id: 'rc1', type: ReferralType.USER, user_id: 'referrer-1' },
+      });
+      mockPrisma.referralBalance.findUnique.mockResolvedValue({ user_id: 'referrer-1', conversions: 0 });
+      mockPrisma.$transaction.mockResolvedValue([]);
+      mockNotifications.create.mockResolvedValue(undefined);
+
+      await service.handlePaymentConversion('user-2');
+
+      expect(mockPrisma.referralBalance.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ available: { increment: 5 } }) }),
+      );
     });
 
     it('apenas atualiza status para INFLUENCER (sem cashback imediato)', async () => {
@@ -252,13 +271,31 @@ describe('ReferralService', () => {
   // ── withdraw ────────────────────────────────────────────────────────────────
 
   describe('withdraw', () => {
-    it('lança BadRequest se saldo insuficiente', async () => {
-      mockPrisma.referralBalance.findUnique.mockResolvedValue({ user_id: 'u1', available: 5 });
+    it('bloqueia saque com saldo e conversões insuficientes', async () => {
+      mockPrisma.referralBalance.findUnique.mockResolvedValue({ user_id: 'u1', available: 5, conversions: 2 });
+      await expect(service.withdraw('u1', { pix_key: '11999', amount: 5 }))
+        .rejects.toThrow('Saque liberado a partir de');
+    });
+
+    it('permite saque com 4 conversões mesmo se saldo < R$ 20', async () => {
+      mockPrisma.referralBalance.findUnique.mockResolvedValue({ user_id: 'u1', available: 18, conversions: 4 });
+      mockPrisma.referralWithdrawal.count.mockResolvedValue(0);
+      mockPrisma.$transaction.mockImplementation(async (fn: (tx: typeof mockPrisma) => Promise<unknown>) => {
+        mockPrisma.referralWithdrawal.create.mockResolvedValue({ id: 'w2' });
+        return fn(mockPrisma);
+      });
+
+      const result = await service.withdraw('u1', { pix_key: '11999', amount: 18 });
+      expect(result.withdrawal_id).toBe('w2');
+    });
+
+    it('lança BadRequest se saldo insuficiente (sem conversões suficientes)', async () => {
+      mockPrisma.referralBalance.findUnique.mockResolvedValue({ user_id: 'u1', available: 5, conversions: 0 });
       await expect(service.withdraw('u1', { pix_key: '11999', amount: 20 })).rejects.toThrow(BadRequestException);
     });
 
     it('lança BadRequest se valor maior que saldo', async () => {
-      mockPrisma.referralBalance.findUnique.mockResolvedValue({ user_id: 'u1', available: 25 });
+      mockPrisma.referralBalance.findUnique.mockResolvedValue({ user_id: 'u1', available: 25, conversions: 0 });
       await expect(service.withdraw('u1', { pix_key: '11999', amount: 30 })).rejects.toThrow(BadRequestException);
     });
 

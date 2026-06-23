@@ -341,13 +341,20 @@ recebe R$ 5,00 — mesmo que suba de nível depois.
 2. Backend verifica se o assinante veio por referral_code
 3. Se sim: busca o indicador pelo referral_code
 4. Calcula cashback conforme nível atual do indicador
-5. Incrementa referral_balance.pending += cashback_amount
+5. Incrementa referral_balance.available += cashback_amount  (LIBERAÇÃO IMEDIATA — sem D+30)
 6. Incrementa referral_balance.total_earned += cashback_amount
 7. Incrementa referral_code.conversions += 1
 8. Atualiza referral.status = CONVERTED
-9. Job D+30: move pending → available
-10. Push notification: "R$ X,00 de cashback liberado!"
+9. Push notification: "R$ X,00 de cashback disponível para saque!"
 ```
+
+NOTA: O cashback do motorista é liberado IMEDIATAMENTE em `available`
+no momento da conversão — não há período de espera (D+30) para esta
+modalidade. O D+30 mencionado em outras seções deste documento se
+aplica exclusivamente à comissão recorrente de INFLUENCERS (seção
+16.5), que é um modelo de risco diferente (pagamento mensal contínuo,
+não um valor único). Para o motorista, o risco de chargeback é
+absorvido pela empresa, não pelo indicador.
 
 ### 16.3 Trial do indicado
 
@@ -370,16 +377,32 @@ Verificação no cadastro:
 ### 16.4 Regras de saque
 
 ```
-Condições para saque:
+Condições para saque (OU — basta uma das duas):
   balance.available >= 20.00
+  OU
+  referral_code.conversions >= 4
+
+Isso significa que o motorista pode sacar mesmo com saldo abaixo de
+R$ 20,00, desde que já tenha 4 indicações convertidas no histórico
+(ex.: nível Iniciante com 4 conversões = R$ 20,00 exatos — na prática
+as duas condições convergem no nível Iniciante; a condição por
+quantidade passa a importar de verdade se algum ajuste futuro de
+valor por nível fizer o total de 4 conversões ficar abaixo de R$ 20).
 
 Processamento:
-  1. Criar ReferralWithdrawal com status=PENDING
-  2. Decrementar balance.available -= amount
-  3. Incrementar balance.total_withdrawn += amount
-  4. Processar PIX via Pagar.me em até 1 dia útil
-  5. Atualizar status para PAID ou FAILED
-  6. SE FAILED: devolver saldo (available += amount)
+  1. Validar: available >= 20.00 OU conversions >= 4
+  2. Criar ReferralWithdrawal com status=PENDING
+  3. Decrementar balance.available -= amount
+  4. Incrementar balance.total_withdrawn += amount
+  5. Processar PIX via Pagar.me em até 1 dia útil
+  6. Atualizar status para PAID ou FAILED
+  7. SE FAILED: devolver saldo (available += amount)
+
+IMPORTANTE: o valor sacável é sempre balance.available (o saldo em
+reais), independente de qual das duas condições liberou o saque. A
+condição por "4 indicações" libera o ACESSO ao saque mesmo com saldo
+baixo, mas o motorista só recebe o que de fato tem em available —
+não há valor extra por atingir a contagem de indicações.
 
 Revisão manual automática:
   SE count(withdrawals no mês) > 10: flaggar para revisão antes de processar

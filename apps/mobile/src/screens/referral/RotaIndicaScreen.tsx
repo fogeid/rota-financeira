@@ -205,7 +205,7 @@ export function RotaIndicaScreen() {
   const progressPercent = data.next_level_at
     ? (data.conversions / data.next_level_at) * 100
     : 100;
-  const canWithdraw = data.balance.available >= MIN_WITHDRAWAL;
+  const canWithdraw = data.balance.available >= MIN_WITHDRAWAL || data.conversions >= 4;
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
@@ -216,11 +216,6 @@ export function RotaIndicaScreen() {
           <Text style={styles.heroLabel}>Saldo disponível</Text>
         </View>
         <Text style={styles.heroAmount}>{formatBRL(data.balance.available)}</Text>
-        {data.balance.pending > 0 && (
-          <Text style={styles.heroPending}>
-            {formatBRL(data.balance.pending)} aguardando 30 dias
-          </Text>
-        )}
         <TouchableOpacity
           style={[styles.saqueBtn, !canWithdraw && styles.saqueBtnDisabled]}
           onPress={() => canWithdraw && setWithdrawVisible(true)}
@@ -228,7 +223,7 @@ export function RotaIndicaScreen() {
         >
           <Ionicons name="cash-outline" size={16} color={canWithdraw ? colors.bg : colors.text3} />
           <Text style={[styles.saqueBtnText, !canWithdraw && { color: colors.text3 }]}>
-            {canWithdraw ? 'Sacar via PIX' : `Saque a partir de ${formatBRL(MIN_WITHDRAWAL)}`}
+            {canWithdraw ? 'Sacar via PIX' : 'Saque a partir de R$ 20,00 ou 4 indicações'}
           </Text>
         </TouchableOpacity>
       </View>
