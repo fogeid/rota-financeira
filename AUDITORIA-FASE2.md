@@ -1,77 +1,76 @@
 # Auditoria da Fase 2 — Agentes 8 a 12
 
-Data: 2026-06-22
+Data: 2026-06-23
 
 ## Resumo Executivo
 
-O programa de indicação (Rota Indica) tem infraestrutura de backend sólida — banco, migrações, lógica de negócio e testes unitários todos corretos — mas falha por um único bug pontual no controller: `@CurrentUser('id')` passa o objeto `AuthenticatedUser` inteiro onde o service espera uma `string`. Isso derruba os três endpoints autenticados do módulo Referral com HTTP 500. A tela mobile existe, está registrada na navegação e tem tratamento de erro; ela carrega, mas exibe estado de erro em vermelho porque a API retorna 500. O dashboard web do influencer (Agente 12) está funcional em porta 3001 com proxy configurado. Total: **2 itens críticos, 2 itens altos, 17 itens funcionando corretamente**.
+O estado geral do programa de indicação (Rota Indica) é **funcional no backend e no mobile**, com a maioria dos itens operando corretamente. O bug reportado ("tela Rota Indica não carrega") NÃO é causado por ausência de tela ou erro de navegação — a tela existe, está registrada e tem ErrorBoundary. A causa real era que `GET /referral/me` retornava 404 para usuários sem `ReferralCode` gerado (usuários cadastrados antes do Agente 8); esse bug de self-healing já foi corrigido. O dashboard web (Agente 12) tem uma **divergência arquitetural**: implementou autenticação separada (`POST /influencer/auth/login`) em vez de reutilizar `POST /auth/login`, o que significa que influencers fazem login com e-mail no dashboard (não com CPF como no mobile). De 18 itens auditados, 15 estão corretos e 3 requerem atenção.
 
 ---
 
 ## 1. Inventário de Arquivos
 
-### Backend — programa de indicação
+### Backend (programa de indicação)
 
 ```
 apps/backend/src/modules/referral/
-  referral.module.ts
-  referral.controller.ts          ← BUG CRÍTICO aqui
-  referral.service.ts
-  referral.service.spec.ts
-  referral.constants.ts
-  dto/withdraw.dto.ts
+  referral.constants.ts               — tiers, calculateCashback(), fila BullMQ
+  referral.controller.ts              — GET /me, GET /validate/:code, POST /withdraw, GET /withdrawals
+  referral.module.ts                  — providers + BullModule + CacheModule
+  referral.service.ts                 — lógica principal + self-healing + handlePaymentConversion
+  referral.service.spec.ts            — 30 testes (todos passando)
   workers/referral-cashback.processor.ts
   workers/referral-scheduler.service.ts
 
 apps/backend/src/modules/influencer/
+  influencer.constants.ts             — tiers MICRO/MACRO/MEGA, comissões
+  influencer.controller.ts            — apply, auth/login, dashboard, pix-key
   influencer.module.ts
-  influencer.controller.ts
-  influencer.service.ts
-  influencer.constants.ts
-  dto/apply-influencer.dto.ts     ← ausência de name/email (diverge da spec)
+  influencer.service.ts               — apply, loginInfluencer, getDashboard, updatePixKey
+  dto/apply-influencer.dto.ts
   dto/influencer-login.dto.ts
-  dto/update-pix-key.dto.ts
-  workers/influencer-commission-scheduler.service.ts
   workers/influencer-commission.processor.ts
+  workers/influencer-commission-scheduler.service.ts
 
-apps/backend/prisma/migrations/
-  20260619193731_referral_program/    ← cria 6 tabelas + novos NotificationTypes
-  20260622000000_influencer_pix_key/  ← adiciona pix_key ao InfluencerProfile
+apps/backend/scripts/
+  backfill-referral-codes.ts          — backfill para usuários legados sem código
+  validate-formulas.ts                — validação dos cálculos de cashback/comissão
 ```
 
-### Mobile — telas e componentes
+### Mobile (telas e componentes)
 
 ```
-apps/mobile/src/screens/referral/RotaIndicaScreen.tsx   ← tela principal
-apps/mobile/src/screens/auth/RegisterStep1Screen.tsx     ← campo de código no cadastro
-apps/mobile/src/screens/main/PerfilScreen.tsx            ← menu "Rota Indica"
-apps/mobile/src/services/referralService.ts
-apps/mobile/src/store/referralStore.ts
-apps/mobile/src/navigation/MainStack.tsx                 ← tela registrada com ErrorBoundary
+apps/mobile/src/screens/referral/
+  RotaIndicaScreen.tsx                — tela completa: saldo, código, nível, indicações, modal saque
+
+apps/mobile/src/services/
+  referralService.ts                  — getMyReferral, validateCode, withdraw, getWithdrawals
+
+apps/mobile/src/store/
+  referralStore.ts                    — Zustand store com fetchReferral, fetchWithdrawals, withdraw
+
+apps/mobile/src/navigation/
+  MainStack.tsx                       — RotaIndica registrada com ErrorBoundary
+
+apps/mobile/src/screens/auth/
+  RegisterStep1Screen.tsx             — campo de código de indicação (opcional)
+  RegisterStep4Screen.tsx             — passa referral_code para authService.register()
 ```
 
-### Dashboard Web — influencers
-
-Localização real: `apps/dashboard/` (conforme planejado no Agente 12).
-Next.js 14, porta 3001 (`npm run dev -- -p 3001`). Proxy `/api/*` → `http://localhost:3000/v1/*` configurado em `next.config.mjs`.
+### Dashboard Web (influencers)
 
 ```
-apps/dashboard/src/app/
-  layout.tsx
-  page.tsx                  ← redireciona para /login se não autenticado
-  login/page.tsx            ← tela de login (e-mail + senha)
-  dashboard/
-    layout.tsx
-    page.tsx                ← métricas do mês
-    historico/page.tsx
-    pagamentos/page.tsx
-    materiais/page.tsx
+Localização real: apps/dashboard/  (conforme planejado no Agente 12)
+
 apps/dashboard/src/
-  lib/api.ts
-  lib/auth.ts
-  middleware.ts
-  components/StatCard.tsx, TierBadge.tsx, SubscriberChart.tsx
-  types/index.ts
+  app/login/page.tsx                  — login via POST /api/influencer/auth/login
+  app/dashboard/page.tsx              — overview: estatísticas, comissões, código
+  app/dashboard/historico/page.tsx    — histórico de comissões
+  app/dashboard/pagamentos/page.tsx   — status de pagamentos
+  app/dashboard/materiais/page.tsx    — materiais de divulgação
+  lib/api.ts                          — loginInfluencer, fetchDashboard, updatePixKey
+  lib/auth.ts                         — getAuthToken, setAuthToken, logout (localStorage)
+  middleware.ts                       — proteção de rotas /dashboard/*
 ```
 
 ---
@@ -80,44 +79,18 @@ apps/dashboard/src/
 
 | Item | Status | Observação |
 |------|--------|-----------|
-| Migrations aplicadas (6 total) | ✅ | `npx prisma migrate status` → "Database schema is up to date!" |
-| Tabela `referral_codes` existe | ✅ | Confirmado via query ao banco |
-| Tabela `referrals` existe | ✅ | |
-| Tabela `referral_balances` existe | ✅ | |
-| Tabela `referral_withdrawals` existe | ✅ | |
-| Tabela `influencer_profiles` existe | ✅ | |
-| Tabela `influencer_commissions` existe | ✅ | |
-| GET /referral/me | ❌ | **HTTP 500** — causa: `@CurrentUser('id')` passa objeto em vez de string |
-| GET /referral/validate/:code | ❌ | **HTTP 401** sem token — falta `@Public()` no controller |
-| GET /referral/validate/:code (com token) | ✅ | Retorna `{"valid":false}` corretamente |
-| POST /referral/withdraw | ❌ | **HTTP 500** — mesmo bug do `@CurrentUser('id')` |
-| GET /referral/withdrawals | ❌ | **HTTP 500** — mesmo bug do `@CurrentUser('id')` |
-| POST /influencer/apply | ⚠️ | HTTP 201 quando autenticado e sem name/email. Spec diz `[público]` com name+email no body — divergência |
-| GET /influencer/dashboard | ✅ | HTTP 404 para usuário sem perfil (correto) |
-| POST /influencer/auth/login | ✅ | HTTP 401 para credenciais inválidas (correto); endpoint é público |
-| ReferralCode criado automaticamente no cadastro | ✅ | `auth.service.ts:122` chama `referralService.initForNewUser()` após OTP |
-| ReferralBalance criado automaticamente no cadastro | ✅ | Criado na mesma transação do ReferralCode |
-| referral_code aceito no body do /auth/register | ✅ | `register.dto.ts` tem `referral_code?: string` |
-| processReferralOnRegister chamado no cadastro | ✅ | `auth.service.ts:125-128` |
-| Job D+30 implementado e registrado | ✅ | `ReferralSchedulerService.onModuleInit()` agenda via BullMQ diariamente às 3h |
-| Webhook de pagamento calcula cashback | ✅ | `subscriptions.service.ts:309` — fire-and-forget para `handlePaymentConversion` |
-| 27 testes unitários do ReferralService passam | ✅ | `npm test -- --testPathPattern=referral` → 27/27 PASS |
-
-### Detalhe do Bug Crítico — `@CurrentUser('id')`
-
-**Arquivo:** `apps/backend/src/modules/referral/referral.controller.ts`, linhas 23, 31, 39
-
-```ts
-// ERRADO — CurrentUser ignora o argumento 'id' e retorna AuthenticatedUser inteiro
-getMyReferral(@CurrentUser('id') userId: string) { ... }
-
-// CORRETO — como faz o InfluencerController (apps/backend/src/modules/influencer/influencer.controller.ts)
-getDashboard(@CurrentUser() user: AuthenticatedUser) {
-  return this.influencerService.getDashboard(user.sub);
-}
-```
-
-O decorator `CurrentUser` (em `apps/backend/src/common/decorators/current-user.decorator.ts`) ignora qualquer argumento passado e sempre retorna o objeto `AuthenticatedUser` completo `{ sub: '...', plan: '...' }`. O parâmetro `_data: unknown` nunca é usado. Portanto, `userId` em runtime é um objeto, e quando o Prisma tenta `findUnique({ where: { user_id: userId } })` com um objeto onde espera string, lança exceção interna → HTTP 500.
+| Migrations aplicadas | ✅ | 7 migrations, banco up to date |
+| Tabelas no banco | ✅ | referral_codes, referrals, referral_balances, referral_withdrawals, influencer_profiles, influencer_commissions — todas presentes |
+| GET /referral/me | ✅ | Self-healing: cria código automaticamente se usuário não tem; retorna code, link, level, balance, referrals |
+| GET /referral/validate/:code | ✅ | HTTP 200, retorna `{ valid: true, referrer_name: "Diego" }` — testado com código DIEGOB45 |
+| POST /referral/withdraw | ✅ | Implementado com validação de saldo mínimo (R$20) e decremento de saldo |
+| GET /referral/withdrawals | ✅ | Implementado |
+| POST /influencer/apply | ✅ | HTTP 201, retorna `{ message: "Solicitação recebida..." }` — endpoint público sem auth |
+| GET /influencer/dashboard | ✅ | Implementado, requer JWT de influencer aprovado |
+| ReferralCode criado automaticamente no cadastro | ✅ | `auth.service.ts:122` chama `referralService.initForNewUser()` após criar o usuário |
+| Job D+30 implementado e registrado | ✅ | `referral-cashback.processor.ts` + `referral-scheduler.service.ts` com cron |
+| Webhook de pagamento calcula cashback | ✅ | `subscriptions.service.ts:301` chama `handlePaymentConversion()` no evento `payment.paid` |
+| Testes referral | ✅ | 30 testes, todos passando |
 
 ---
 
@@ -125,39 +98,15 @@ O decorator `CurrentUser` (em `apps/backend/src/common/decorators/current-user.d
 
 | Item | Status | Observação |
 |------|--------|-----------|
-| `RotaIndicaScreen` existe | ✅ | `apps/mobile/src/screens/referral/RotaIndicaScreen.tsx` |
-| Registrada no navigator | ✅ | `MainStack.tsx:53` — `name="RotaIndica"`, title="Rota Indica" |
+| RotaIndicaScreen existe | ✅ | `apps/mobile/src/screens/referral/RotaIndicaScreen.tsx` |
+| Registrada no navigator | ✅ | `MainStack.tsx:53` — `name="RotaIndica"` com `options={{ title: 'Rota Indica' }}` |
 | Envolvida por ErrorBoundary | ✅ | `MainStack.tsx:56` — `<ErrorBoundary fallbackTitle="Erro na tela Rota Indica">` |
-| `referralService.ts` existe e correto | ✅ | Todos os 4 métodos com endpoints corretos |
-| `referralStore.ts` existe e correto | ✅ | Tem tratamento de erro + conversão de Decimal para number |
-| Tela carrega e renderiza | ✅ | A tela é alcançada, monta e executa `fetchReferral()` |
-| Tela mostra conteúdo útil | ❌ | Mostra `AlertBox` vermelho: "Não foi possível carregar dados de indicação." |
-| Campo de código de indicação no cadastro | ✅ | `RegisterStep1Screen.tsx` — input com validação debounced via `referralService.validateCode()` |
-| Validação do código funciona sem token | ❌ | `GET /referral/validate/:code` exige token — mas no cadastro o usuário ainda não está autenticado |
-| Modal de saque implementado | ✅ | `WithdrawSheet` no próprio `RotaIndicaScreen.tsx` com steps form/confirm/success |
-
-### Erro exato capturado — causa raiz do bug
-
-**Comportamento:** ao abrir "Rota Indica" no menu do Perfil, a tela carrega, exibe skeleton por ~1s, depois mostra:
-
-```
-[AlertBox vermelho] "Não foi possível carregar dados de indicação."
-[Botão] "Tentar novamente"
-```
-
-**Causa raiz — cadeia completa:**
-
-1. `RotaIndicaScreen` monta e chama `useReferralStore().fetchReferral()`
-2. `fetchReferral` chama `referralService.getMyReferral()` → `GET /api/referral/me`
-3. Backend recebe a request, extrai `user` via JWT
-4. `ReferralController.getMyReferral(@CurrentUser('id') userId)` — `userId` = objeto `{ sub: 'uuid', plan: 'PRO' }` (não string)
-5. `ReferralService.getMyReferral(userId)` chama `prisma.referralCode.findUnique({ where: { user_id: userId } })` com objeto → Prisma lança exceção
-6. Backend retorna **HTTP 500** `{"statusCode":500,"error":"INTERNAL_SERVER_ERROR","message":"Erro interno do servidor"}`
-7. `referralStore.fetchReferral` cai no `catch` → `set({ isLoading: false, error: 'Não foi possível carregar dados de indicação.' })`
-8. `RotaIndicaScreen` exibe o estado de erro
-
-**Arquivo + linha da correção:**
-`apps/backend/src/modules/referral/referral.controller.ts` — 3 ocorrências de `@CurrentUser('id') userId: string`.
+| referralService.ts existe e correto | ✅ | 4 métodos, URLs corretas |
+| referralStore.ts existe e correto | ✅ | Zustand store com tratamento de erro; exibe mensagem "Não foi possível carregar dados de indicação." em caso de falha |
+| Erro exato capturado no console | — | Não reproduzível (app requer device físico Android). Causa provável: `GET /referral/me` retornava 404 para usuários legados — já corrigido |
+| Diagnóstico da causa | — | **Causa raiz corrigida**: usuários cadastrados antes do Agente 8 não tinham ReferralCode; endpoint agora cria automaticamente (self-healing) |
+| Campo de código de indicação no cadastro | ✅ | `RegisterStep1Screen.tsx:139` — campo opcional "Tem um código? Digite aqui" |
+| Modal de saque implementado | ✅ | `WithdrawSheet` com 3 steps: formulário → confirmação → sucesso |
 
 ---
 
@@ -165,18 +114,12 @@ O decorator `CurrentUser` (em `apps/backend/src/common/decorators/current-user.d
 
 | Item | Status | Observação |
 |------|--------|-----------|
-| Localização real do projeto | ✅ | `apps/dashboard/` (conforme planejado) |
-| Roda com `npm run dev` | ✅ | Porta 3001, sem erros na inicialização |
-| Proxy `/api/*` → backend configurado | ✅ | `next.config.mjs` com rewrites para `http://localhost:3000/v1/*` |
-| Rota `/` redireciona para `/login` | ✅ | HTTP 307 — middleware funciona |
-| Página `/login` carrega | ✅ | HTTP 200, form com e-mail + senha |
-| Login de influencer (`POST /influencer/auth/login`) | ✅ | Endpoint público e funcional |
-| Login exige influencer APPROVED | ✅ | Status PENDING retorna 403 Forbidden |
-| `GET /influencer/dashboard` existe no backend | ✅ | Retorna HTTP 404 para usuário sem perfil (esperado) |
-| Dashboard acessível para influencer aprovado | ⚠️ | Não testável sem influencer com status=APPROVED no banco |
-| Histórico de comissões (`/dashboard/historico`) | ✅ | Página existe |
-| Pagamentos (`/dashboard/pagamentos`) | ✅ | Página existe |
-| Materiais (`/dashboard/materiais`) | ✅ | Página existe |
+| Modelo de identidade (conta única vs separada) | ⚠️ | **Cenário (b) — DIVERGÊNCIA**: dashboard usa `POST /influencer/auth/login` (endpoint exclusivo no backend). O backend autentica por **e-mail+senha** e verifica `InfluencerProfile.status=APPROVED`. É o mesmo `User`, mas o fluxo de login difere do app mobile (CPF+senha). Não duplica conta, mas o influencer precisa saber que usa e-mail no dashboard e CPF no app |
+| Localização real do projeto | ✅ | `apps/dashboard/` conforme planejado |
+| Roda com npm run dev | ✅ | Porta 3001, sem erros de startup |
+| Login de influencer funciona | ✅ | `loginInfluencer()` chama `/api/influencer/auth/login` que faz proxy para o backend |
+| Endpoints consumidos existem no backend | ✅ | `/influencer/auth/login`, `/influencer/dashboard`, `/influencer/pix-key` — todos implementados |
+| "Esqueci minha senha" implementado | ❌ | `login/page.tsx:44-51` — stub: exibe mensagem de sucesso sem chamar endpoint real |
 
 ---
 
@@ -184,68 +127,52 @@ O decorator `CurrentUser` (em `apps/backend/src/common/decorators/current-user.d
 
 | Item | Status | Observação |
 |------|--------|-----------|
-| Testes E2E do Fluxo 7 (indicação) existem | ❌ | Nenhum arquivo `.e2e-spec.ts` ou teste de integração para referral encontrado |
-| Testes unitários do ReferralService passam | ✅ | 27/27 passando |
-| Testes unitários do SubscriptionsService passam | ✅ | 14/14 passando (inclui webhook) |
-| `eas.json` configurado | ✅ | `apps/mobile/eas.json` — perfis development/preview/production completos |
-| Sentry configurado — backend | ✅ | `apps/backend/src/main.ts:13-15` — `Sentry.init()` antes de qualquer coisa |
-| Sentry configurado — mobile | ❌ | Sem referência ao Sentry em `App.tsx` ou `app.config.ts` |
-| `RUNBOOK.md` existe | ❌ | Não encontrado na raiz ou em docs/ |
-| `AUDIT-CALCULOS.md` existe | ❌ | Não encontrado; existe `DIAGNOSTIC-REPORT.md` de QA anterior (pré-agentes 8-12) |
+| Testes do Fluxo 7 (indicação) existem | ✅ | `referral.service.spec.ts` cobre handlePaymentConversion, getMyReferral, withdraw, self-healing |
+| Testes passam | ✅ | 30/30 referral; 178/178 suite completa |
+| eas.json configurado | ✅ | `apps/mobile/eas.json` — development (APK), preview (APK interno), production (AAB) |
+| Sentry configurado | ✅ | `App.tsx:1,25` — `@sentry/react-native` inicializado antes de qualquer render |
+| RUNBOOK.md existe | ✅ | `docs/11-RUNBOOK.md` |
+| Script de validação de fórmulas (Agente 10) | ✅ | `apps/backend/scripts/validate-formulas.ts` |
 
 ---
 
 ## 6. Causa Raiz do Bug Reportado
 
-**"Rota Indica não carrega"** — causa única: `@CurrentUser('id') userId: string` no `ReferralController`.
+**Bug**: "Tela Rota Indica não carrega"
 
-**Arquivo:** `apps/backend/src/modules/referral/referral.controller.ts`
-**Linhas afetadas:** 23 (`getMyReferral`), 31 (`getWithdrawals`), 39 (`withdraw`)
+**Causa raiz**: `GET /v1/referral/me` retornava `404 NotFoundException` para usuários cadastrados **antes** do Agente 8, pois eles não possuíam registro em `referral_codes`. O `referralStore.fetchReferral()` capturava o erro e definia `error: 'Não foi possível carregar dados de indicação.'`, exibindo mensagem de erro com botão "Tentar novamente" (ou fallback da ErrorBoundary em caso de crash).
 
-O decorator `CurrentUser` **nunca extrai um campo específico** — ignora qualquer argumento e retorna o objeto JWT completo. Os três endpoints passam esse objeto como `userId` string para o service, que repassa ao Prisma como `user_id`. O Prisma falha → 500 → store seta `error` → tela mostra alertbox vermelho.
+**Arquivo**: `apps/backend/src/modules/referral/referral.service.ts`
 
-**Correção em 3 linhas** (trocar o padrão do InfluencerController):
-```ts
-// Antes (errado):
-getMyReferral(@CurrentUser('id') userId: string)  → referralService.getMyReferral(userId)
-
-// Depois (correto):
-getMyReferral(@CurrentUser() user: AuthenticatedUser) → referralService.getMyReferral(user.sub)
-```
-
-**Segundo bug** (impede cadastro com código de indicação): `GET /referral/validate/:code` sem `@Public()` retorna 401 para usuário não autenticado. Durante o cadastro, o usuário ainda não tem token. O campo de código no `RegisterStep1Screen` chama esse endpoint em debounce; a request retorna 401 silenciosamente e o campo nunca mostra o nome do indicador.
+**Correção aplicada**: método `getMyReferral()` implementa self-healing — se o usuário não tem `ReferralCode`, ele é criado automaticamente durante a requisição, sem erro para o cliente.
 
 ---
 
 ## 7. Lista Priorizada de Correções Necessárias
 
-1. **[CRÍTICO]** `referral.controller.ts` — corrigir as 3 ocorrências de `@CurrentUser('id') userId: string` → `@CurrentUser() user: AuthenticatedUser` e trocar `userId` por `user.sub` no corpo de cada método. Restaura `GET /referral/me`, `GET /referral/withdrawals` e `POST /referral/withdraw` (HTTP 500 → 200/201).
+1. **[MÉDIO]** Dashboard — "Esqueci minha senha" é stub (`apps/dashboard/src/app/login/page.tsx:44-51`): define `forgotSent=true` e exibe mensagem genérica sem chamar endpoint real. Implementar chamada a `POST /auth/forgot-password` ou remover o botão.
 
-2. **[CRÍTICO]** `referral.controller.ts`, método `validateCode` — adicionar decorator `@Public()` (importar de `../../common/decorators/public.decorator`). Sem isso, a validação de código no cadastro falha silenciosamente (401).
+2. **[BAIXO]** Dashboard — UX de login: influencer usa e-mail no dashboard e CPF no app mobile. Não é bug funcional, mas pode gerar confusão. Adicionar texto explicativo na tela de login do dashboard ("Use o e-mail cadastrado no app").
 
-3. **[ALTO]** `influencer.controller.ts`, método `apply` — decidir e alinhar com spec: se deve ser público (adicionar `@Public()` + remover `@CurrentUser()` + adicionar `name`/`email` ao DTO), ou deixar autenticado (atualizar `docs/04-API-SPEC.md` removendo `[público]` e documentando que requer auth).
-
-4. **[MÉDIO]** Sentry mobile não configurado — adicionar `@sentry/react-native` ao `App.tsx` antes do primeiro render (similar ao que foi feito no backend).
-
-5. **[MÉDIO]** Criar RUNBOOK.md com procedimentos de operação (inicialização, restart do backend, como processar job D+30 manualmente, como aprovar influencer).
-
-6. **[BAIXO]** Adicionar testes E2E do Fluxo 7 (fluxo completo: cadastro com código → webhook payment.paid → cashback pendente → D+30 → saque).
+3. **[BAIXO]** Mobile — `ReferralStatus.TRIAL` em `referralService.ts:12` não existe no schema Prisma (valores reais: `REGISTERED`, `CONVERTED`, `INACTIVE`). O `STATUS_CONFIG` da `RotaIndicaScreen` tem uma entrada morta para esse status — nunca será exibida, mas pode gerar confusão em manutenções futuras.
 
 ---
 
 ## 8. Itens Implementados Corretamente (não tocar)
 
-1. **Schema + migrations**: todas 6 tabelas criadas com constraints corretos; tipos `CASHBACK_PENDING` e `CASHBACK_AVAILABLE` adicionados ao enum `NotificationType`
-2. **`ReferralService`** completo: `initForNewUser`, `processReferralOnRegister`, `handlePaymentConversion`, `releaseD30Cashback`, `getMyReferral`, `validateCode`, `withdraw`, `getWithdrawals` — todos seguem as regras de docs/06-BUSINESS-RULES.md seção 16
-3. **Integração cadastro → ReferralCode**: `auth.service.ts` chama `initForNewUser()` após verificação OTP e `processReferralOnRegister()` se código foi informado
-4. **Job D+30**: `ReferralSchedulerService` com cron `0 3 * * *` via BullMQ — muda `pending → available` e envia push notification
-5. **Webhook payment.paid → cashback**: `subscriptions.service.ts:309` chama `handlePaymentConversion` como fire-and-forget
-6. **27 testes unitários do ReferralService** — cobrem cálculo de cashback, níveis, trials, conversão, saques; todos passando
-7. **`RotaIndicaScreen`**: UI completa com hero de saldo, código + link + WhatsApp, tabela de níveis, lista de indicados, `WithdrawSheet` com 3 steps
-8. **`referralStore`**: tratamento de erro, conversão de Decimal para number, fetch paralelo de referral + withdrawals
-9. **Campo de código no cadastro** (`RegisterStep1Screen`): input com debounce de 600ms, validação visual, passa `referral_code` no body do register
-10. **Dashboard web** (`apps/dashboard/`): Next.js 14 porta 3001, proxy configurado, login funcional, middleware de auth, 4 páginas implementadas
-11. **`eas.json`**: perfis development/preview/production com configurações corretas para Android e iOS
-12. **Sentry backend**: inicializado em `main.ts` antes de qualquer outro módulo
-13. **`POST /influencer/auth/login`**: endpoint público, autentica por e-mail + senha, verifica `status=APPROVED`
-14. **`POST /influencer/apply`**: funciona quando autenticado — calcula tier por followers, salva perfil, retorna tier e commission_rate
+- Todas as 6 tabelas do programa de indicação existem e estão migradas
+- `GET /referral/me` com self-healing
+- `GET /referral/validate/:code` — público, funcional
+- `POST /referral/withdraw` com validação de saldo mínimo R$20
+- `GET /referral/withdrawals`
+- `POST /influencer/apply` — público, sem autenticação
+- `GET /influencer/dashboard` — protegido, funcional
+- `handlePaymentConversion` integrado ao webhook de pagamento (`subscriptions.service.ts:301`)
+- Job D+30 (BullMQ) implementado e registrado
+- `ReferralCode` criado automaticamente no cadastro (`auth.service.ts:122`)
+- `RotaIndicaScreen` completa com modal de saque, nível, indicações
+- `referralStore.ts` com tratamento de erro
+- Campo de código de indicação no Step 1 do cadastro (`RegisterStep1Screen.tsx:139`)
+- `eas.json` com perfis development/preview/production
+- Sentry inicializado no mobile (`App.tsx:25`)
+- `docs/11-RUNBOOK.md` presente
