@@ -11,9 +11,8 @@ import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { api } from '../../services/api';
 import { authService } from '../../services/authService';
-import { useAuthStore } from '../../store/authStore';
+import { useRegistrationStore } from '../../store/registrationStore';
 import { FormInput, ConfirmButton, AlertBox } from '../../components';
 import { colors, spacing, typography } from '../../theme';
 import type { AuthStackParamList } from '../../navigation/AuthNavigator';
@@ -42,7 +41,7 @@ export function RegisterStep4Screen({ navigation, route }: Props) {
   const { phone, name, cpf, email, password, plate, brand, model, year } = route.params;
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const { setTokens, setUser } = useAuthStore();
+  const { referralCode, setVehicleData, setFinancingData } = useRegistrationStore();
 
   const {
     control,
@@ -54,25 +53,30 @@ export function RegisterStep4Screen({ navigation, route }: Props) {
     setApiError(null);
     setLoading(true);
     try {
-      // Complete registration
-      const authResp = await authService.register({ name, cpf, phone, email, password });
-      // POST vehicle + financing data
-      await api.post('/vehicles', {
-        plate,
-        brand,
-        model,
-        year,
-        financing: {
-          installment_value: parseBRL(data.installmentValue),
-          total_installments: Number(data.totalInstallments),
-          remaining_installments: Number(data.remainingInstallments),
-          desired_net_income: parseBRL(data.desiredIncome),
-        },
+      // Persist vehicle + financing for use after OTP verification
+      setVehicleData({ plate, brand, model, year });
+      setFinancingData(data);
+
+      await authService.register({
+        name,
+        cpf,
+        phone,
+        email,
+        password,
+        ...(referralCode ? { referral_code: referralCode } : {}),
       });
-      navigation.navigate('ConnectPlatform');
+
+      navigation.navigate('OTP', { phone, purpose: 'REGISTRATION' });
     } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } }).response?.status;
       const msg = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
-      setApiError(msg ?? 'Erro ao salvar. Tente novamente.');
+      if (status === 409) {
+        setApiError('CPF, telefone ou e-mail já cadastrado.');
+      } else if (status === 400) {
+        setApiError(msg ?? 'Dados inválidos. Verifique os campos.');
+      } else {
+        setApiError('Erro de conexão. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }

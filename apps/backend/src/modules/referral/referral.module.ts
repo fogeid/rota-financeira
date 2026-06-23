@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
+import { CacheModule } from '../../cache/cache.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { REFERRAL_CASHBACK_QUEUE } from './referral.constants';
 import { ReferralController } from './referral.controller';
@@ -9,6 +10,7 @@ import { ReferralSchedulerService } from './workers/referral-scheduler.service';
 
 @Module({
   imports: [
+    CacheModule,
     NotificationsModule,
     BullModule.registerQueue({ name: REFERRAL_CASHBACK_QUEUE }),
   ],

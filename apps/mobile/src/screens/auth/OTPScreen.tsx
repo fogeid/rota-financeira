@@ -9,7 +9,9 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { authService } from '../../services/authService';
+import { api } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
+import { useRegistrationStore } from '../../store/registrationStore';
 import { ConfirmButton, AlertBox } from '../../components';
 import { colors, spacing, typography } from '../../theme';
 import type { AuthStackParamList } from '../../navigation/AuthNavigator';
@@ -39,6 +41,10 @@ export function OTPScreen({ navigation, route }: Props) {
     return () => clearTimeout(timer);
   }, [countdown]);
 
+  function parseBRL(value: string): number {
+    return parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0;
+  }
+
   async function handleVerify() {
     if (code.length < OTP_LENGTH) return;
     setApiError(null);
@@ -48,7 +54,23 @@ export function OTPScreen({ navigation, route }: Props) {
       await setTokens(response.access_token, response.refresh_token);
       setUser(response.user);
       if (purpose === 'REGISTRATION') {
-        navigation.navigate('RegisterStep2', { phone, name: name ?? '', cpf: cpf ?? '' });
+        const { vehicleData, financingData, reset } = useRegistrationStore.getState();
+        if (vehicleData && financingData) {
+          await api.post('/vehicles', {
+            plate: vehicleData.plate,
+            brand: vehicleData.brand,
+            model: vehicleData.model,
+            year: vehicleData.year,
+            financing: {
+              installment_value: parseBRL(financingData.installmentValue),
+              total_installments: Number(financingData.totalInstallments),
+              remaining_installments: Number(financingData.remainingInstallments),
+              desired_net_income: parseBRL(financingData.desiredIncome),
+            },
+          });
+        }
+        reset();
+        navigation.navigate('ConnectPlatform');
       } else {
         navigation.navigate('ResetPassword', { phone, code });
       }
