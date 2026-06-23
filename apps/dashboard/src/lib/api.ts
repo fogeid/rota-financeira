@@ -25,8 +25,9 @@ api.interceptors.response.use(
   },
 );
 
-export async function loginInfluencer(email: string, password: string): Promise<LoginResponse> {
-  const { data } = await api.post<LoginResponse>('/influencer/auth/login', { email, password });
+export async function loginInfluencer(cpf: string, password: string): Promise<LoginResponse> {
+  const cleanCpf = cpf.replace(/\D/g, '');
+  const { data } = await api.post<LoginResponse>('/auth/login', { cpf: cleanCpf, password });
   return data;
 }
 
@@ -40,8 +41,13 @@ export async function updatePixKey(pix_key: string): Promise<{ message: string; 
   return data;
 }
 
-export async function forgotPassword(email: string): Promise<{ message: string }> {
-  const { data } = await api.post<{ message: string }>('/auth/forgot-password', { phone: email });
+export async function forgotPassword(phone: string): Promise<{ message: string }> {
+  const { data } = await api.post<{ message: string }>('/auth/forgot-password', { phone });
+  return data;
+}
+
+export async function resetPassword(phone: string, code: string, new_password: string): Promise<{ message: string }> {
+  const { data } = await api.post<{ message: string }>('/auth/reset-password', { phone, code, new_password });
   return data;
 }
 

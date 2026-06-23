@@ -6,7 +6,6 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { InfluencerService } from './influencer.service';
 import { ApplyInfluencerDto } from './dto/apply-influencer.dto';
-import { InfluencerLoginDto } from './dto/influencer-login.dto';
 import { UpdatePixKeyDto } from './dto/update-pix-key.dto';
 
 @ApiTags('Influencer')
@@ -27,13 +26,6 @@ export class InfluencerController {
   @ApiOperation({ summary: 'Perfil e histórico de comissões do influencer' })
   getMyProfile(@CurrentUser() user: AuthenticatedUser) {
     return this.influencerService.getMyProfile(user.sub);
-  }
-
-  @Post('auth/login')
-  @Public()
-  @ApiOperation({ summary: 'Login do influencer via e-mail + senha (dashboard web)' })
-  loginInfluencer(@Body() dto: InfluencerLoginDto) {
-    return this.influencerService.loginInfluencer(dto);
   }
 
   @Get('dashboard')

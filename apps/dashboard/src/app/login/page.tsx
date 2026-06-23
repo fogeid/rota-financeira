@@ -3,12 +3,20 @@
 import { Suspense, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { loginInfluencer } from '@/lib/api';
-import { setAuthToken, setInfluencerUser } from '@/lib/auth';
+import { loginInfluencer, fetchDashboard } from '@/lib/api';
+import { setAuthToken, setInfluencerUser, logout } from '@/lib/auth';
 
 interface LoginForm {
-  email: string;
+  cpf: string;
   password: string;
+}
+
+function formatCPF(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  return digits
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
 }
 
 function LoginForm() {
@@ -16,71 +24,75 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [forgotSent, setForgotSent] = useState(false);
+  const [cpfValue, setCpfValue] = useState('');
 
-  const { register, handleSubmit, getValues, formState: { errors } } = useForm<LoginForm>();
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<LoginForm>();
+
+  function handleCpfChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const masked = formatCPF(e.target.value);
+    setCpfValue(masked);
+    setValue('cpf', masked);
+  }
 
   async function onSubmit(data: LoginForm) {
     setLoading(true);
     setError(null);
     try {
-      const res = await loginInfluencer(data.email, data.password);
+      const res = await loginInfluencer(data.cpf, data.password);
       setAuthToken(res.access_token);
-      setInfluencerUser(res.influencer);
-      const redirect = searchParams.get('redirect') ?? '/dashboard';
-      router.push(redirect);
+
+      // Verificar se o usuário tem perfil de influencer aprovado
+      try {
+        const dashboard = await fetchDashboard();
+        setInfluencerUser({
+          name: res.user.name,
+          channel_name: dashboard.channel_name,
+          tier: dashboard.tier,
+        });
+        const redirect = searchParams.get('redirect') ?? '/dashboard';
+        router.push(redirect);
+      } catch (dashErr: unknown) {
+        logout();
+        const status = (dashErr as { response?: { status?: number } })?.response?.status;
+        if (status === 403) {
+          setError('Esta conta não tem um perfil de influencer aprovado. Aguarde a aprovação da sua candidatura.');
+        } else {
+          setError('Não foi possível acessar o dashboard. Tente novamente.');
+        }
+      }
     } catch (err: unknown) {
       const apiErr = err as { response?: { status?: number; data?: { message?: string } } };
-      if (apiErr?.response?.status === 403) {
-        setError('Acesso restrito a influencers aprovados. Aguarde a aprovação da sua candidatura.');
+      if (apiErr?.response?.status === 401) {
+        setError('CPF ou senha incorretos.');
       } else {
-        setError(apiErr?.response?.data?.message ?? 'E-mail ou senha incorretos.');
+        setError(apiErr?.response?.data?.message ?? 'Erro ao fazer login. Tente novamente.');
       }
     } finally {
       setLoading(false);
     }
   }
 
-  function handleForgotPassword() {
-    const email = getValues('email');
-    if (!email) {
-      setError('Informe seu e-mail para recuperar a senha.');
-      return;
-    }
-    setForgotSent(true);
-  }
-
-  if (forgotSent) {
-    return (
-      <div className="rounded-lg bg-green-50 border border-green-200 p-4 text-sm text-green-700">
-        Se esse e-mail estiver cadastrado, você receberá instruções de recuperação em breve.
-        <button
-          className="block mt-3 text-brand-600 font-medium hover:underline"
-          onClick={() => setForgotSent(false)}
-        >
-          Voltar ao login
-        </button>
-      </div>
-    );
-  }
-
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">E-mail</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">CPF</label>
         <input
-          type="email"
-          autoComplete="email"
-          placeholder="ze@seucanal.com"
+          type="text"
+          inputMode="numeric"
+          autoComplete="username"
+          placeholder="000.000.000-00"
+          maxLength={14}
+          value={cpfValue}
           className={`w-full rounded-lg border px-3.5 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-400 transition ${
-            errors.email ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-white'
+            errors.cpf ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-white'
           }`}
-          {...register('email', {
-            required: 'E-mail é obrigatório',
-            pattern: { value: /^\S+@\S+\.\S+$/, message: 'E-mail inválido' },
+          {...register('cpf', {
+            required: 'CPF é obrigatório',
+            validate: (v) => v.replace(/\D/g, '').length === 11 || 'CPF inválido',
           })}
+          onChange={handleCpfChange}
         />
-        {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
+        {errors.cpf && <p className="mt-1 text-xs text-red-500">{errors.cpf.message}</p>}
       </div>
 
       <div>
@@ -112,7 +124,7 @@ function LoginForm() {
       <button
         type="button"
         className="w-full text-center text-sm text-slate-500 hover:text-brand-600 transition"
-        onClick={handleForgotPassword}
+        onClick={() => router.push('/login/recuperar-senha')}
       >
         Esqueci minha senha
       </button>
@@ -135,7 +147,8 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
-          <h2 className="text-lg font-semibold text-slate-800 mb-6">Entrar na sua conta</h2>
+          <h2 className="text-lg font-semibold text-slate-800 mb-2">Entrar na sua conta</h2>
+          <p className="text-xs text-slate-500 mb-6">Use o mesmo CPF e senha do seu app Rota Financeira</p>
           <Suspense fallback={<div className="h-40 animate-pulse bg-slate-100 rounded-lg" />}>
             <LoginForm />
           </Suspense>

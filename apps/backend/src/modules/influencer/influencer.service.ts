@@ -5,18 +5,13 @@ import {
   Injectable,
   LoggerService,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { InfluencerStatus, WithdrawalStatus } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PrismaService } from '../../prisma/prisma.service';
-import { EncryptionService } from '../../common/services/encryption.service';
 import { EmailService } from '../../common/services/email.service';
-import { TokenService } from '../auth/services/token.service';
 import { ApplyInfluencerDto } from './dto/apply-influencer.dto';
-import { InfluencerLoginDto } from './dto/influencer-login.dto';
 import { UpdatePixKeyDto } from './dto/update-pix-key.dto';
 import { getTierByFollowers } from './influencer.constants';
 
@@ -24,9 +19,7 @@ import { getTierByFollowers } from './influencer.constants';
 export class InfluencerService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly encryption: EncryptionService,
     private readonly emailService: EmailService,
-    private readonly tokenService: TokenService,
     @Inject('LOGGER') private readonly logger: LoggerService,
   ) {}
 
@@ -84,42 +77,6 @@ export class InfluencerService {
         status: c.status,
         paid_at: c.paid_at,
       })),
-    };
-  }
-
-  /** POST /influencer/auth/login — autenticação exclusiva para influencers via e-mail + senha */
-  async loginInfluencer(dto: InfluencerLoginDto) {
-    const emailHash = this.encryption.hash(dto.email.toLowerCase());
-
-    const user = await this.prisma.user.findUnique({
-      where: { email_hash: emailHash },
-      include: { influencer_profile: true },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('Credenciais inválidas');
-    }
-
-    const validPassword = await bcrypt.compare(dto.password, user.password_hash);
-    if (!validPassword) {
-      throw new UnauthorizedException('Credenciais inválidas');
-    }
-
-    if (!user.influencer_profile || user.influencer_profile.status !== InfluencerStatus.APPROVED) {
-      throw new ForbiddenException('Acesso restrito a influencers aprovados');
-    }
-
-    const tokens = await this.tokenService.issueTokenPair(user.id, user.plan);
-
-    this.logger.log({ message: 'Login de influencer realizado', userId: user.id });
-
-    return {
-      ...tokens,
-      influencer: {
-        name: user.name,
-        channel_name: user.influencer_profile.channel_name,
-        tier: user.influencer_profile.tier,
-      },
     };
   }
 

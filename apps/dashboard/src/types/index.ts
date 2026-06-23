@@ -4,10 +4,11 @@ export type CommissionStatus = 'PENDING' | 'PAID';
 export interface LoginResponse {
   access_token: string;
   refresh_token: string;
-  influencer: {
+  user: {
+    id: string;
     name: string;
-    channel_name: string;
-    tier: InfluencerTier;
+    plan: string;
+    trial_ends_at: string | null;
   };
 }
 
