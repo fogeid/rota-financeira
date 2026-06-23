@@ -9,7 +9,7 @@ export interface ReferralBalance {
 
 export interface ReferralIndicado {
   name: string;
-  status: 'REGISTERED' | 'TRIAL' | 'CONVERTED' | 'INACTIVE';
+  status: 'REGISTERED' | 'CONVERTED' | 'INACTIVE';
   converted_at: string | null;
 }
 

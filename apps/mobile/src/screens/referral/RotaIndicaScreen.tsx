@@ -30,7 +30,6 @@ const LEVEL_CONFIG = {
 
 const STATUS_CONFIG = {
   REGISTERED: { variant: 'blue'  as const, label: 'Cadastrado' },
-  TRIAL:      { variant: 'amber' as const, label: 'No trial' },
   CONVERTED:  { variant: 'green' as const, label: 'Premium ✓' },
   INACTIVE:   { variant: 'red'   as const, label: 'Inativo' },
 };
