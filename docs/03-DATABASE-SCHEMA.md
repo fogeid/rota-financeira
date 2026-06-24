@@ -475,6 +475,7 @@ model ReferralCode {
   code        String    @unique  // 6 dígitos alfanuméricos. Ex: CARLOS22
   slug        String?   @unique  // Para influencers. Ex: zemoto
   type        ReferralType @default(USER)
+  is_active   Boolean   @default(true)  // false quando usuário se torna influencer aprovado (ver business-rules 16.6)
   clicks      Int       @default(0)
   created_at  DateTime  @default(now())
 

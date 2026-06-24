@@ -216,6 +216,9 @@ export function RotaIndicaScreen() {
           <Text style={styles.heroLabel}>Saldo disponível</Text>
         </View>
         <Text style={styles.heroAmount}>{formatBRL(data.balance.available)}</Text>
+        <Text style={styles.heroHint}>
+          Cada indicação que assina o Premium adiciona o valor do seu nível atual ao seu saldo, na hora.
+        </Text>
         <TouchableOpacity
           style={[styles.saqueBtn, !canWithdraw && styles.saqueBtnDisabled]}
           onPress={() => canWithdraw && setWithdrawVisible(true)}
@@ -231,18 +234,27 @@ export function RotaIndicaScreen() {
       {/* ── CÓDIGO ── */}
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Seu código de indicação</Text>
+        {data.is_active === false && (
+          <AlertBox
+            variant="blue"
+            message="Como você agora é um parceiro influencer, use seu link exclusivo no Portal do Influencer para continuar ganhando por indicações (com comissão recorrente)."
+            style={{ marginTop: 8, marginBottom: 8 }}
+          />
+        )}
         <Text style={styles.codeText}>{data.code}</Text>
         <Text style={styles.linkText} numberOfLines={1}>{data.link}</Text>
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
-          <TouchableOpacity style={styles.codeBtn} onPress={handleCopyCode} activeOpacity={0.8}>
-            <Ionicons name="copy-outline" size={15} color={colors.text} />
-            <Text style={styles.codeBtnText}>Copiar código</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.codeBtn, styles.whatsappBtn]} onPress={handleShareWhatsApp} activeOpacity={0.8}>
-            <Ionicons name="logo-whatsapp" size={15} color={colors.bg} />
-            <Text style={[styles.codeBtnText, { color: colors.bg }]}>WhatsApp</Text>
-          </TouchableOpacity>
-        </View>
+        {data.is_active !== false && (
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+            <TouchableOpacity style={styles.codeBtn} onPress={handleCopyCode} activeOpacity={0.8}>
+              <Ionicons name="copy-outline" size={15} color={colors.text} />
+              <Text style={styles.codeBtnText}>Copiar código</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.codeBtn, styles.whatsappBtn]} onPress={handleShareWhatsApp} activeOpacity={0.8}>
+              <Ionicons name="logo-whatsapp" size={15} color={colors.bg} />
+              <Text style={[styles.codeBtnText, { color: colors.bg }]}>WhatsApp</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* ── NÍVEL ── */}
@@ -332,7 +344,7 @@ const styles = StyleSheet.create({
   },
   heroLabel: { ...typography.small, color: colors.green },
   heroAmount: { fontFamily: 'SpaceGrotesk', fontSize: 36, fontWeight: '700', color: colors.green, marginBottom: 4 },
-  heroPending: { ...typography.small, color: colors.text2, marginBottom: 16 },
+  heroHint: { ...typography.small, color: colors.text2, marginBottom: 16, lineHeight: 18 },
   saqueBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: colors.green, borderRadius: radius.sm, paddingVertical: 12,

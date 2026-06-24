@@ -434,7 +434,53 @@ Suspensão automática do link:
     notificar equipe para revisão
 ```
 
-### 16.6 Invariantes do programa (NUNCA violar)
+### 16.6 Transição de Motorista para Influencer (mudança de modo)
+
+```
+Quando um InfluencerProfile.status muda para APPROVED, o usuário
+DEIXA de operar no modo "motorista comum" do programa de indicação
+e passa a operar EXCLUSIVAMENTE no modo "influencer". Não há
+coexistência dos dois sistemas para a mesma pessoa.
+
+O QUE ACONTECE NO MOMENTO DA APROVAÇÃO:
+
+1. O ReferralCode (código de motorista, ex: DIEGOB45) é DESATIVADO:
+   - ReferralCode.is_active = false
+   - O código deixa de ser aceito em GET /referral/validate/:code
+     e em POST /auth/register (qualquer cadastro tentando usar
+     DIEGOB45 a partir deste momento recebe "Código não encontrado",
+     idêntico ao comportamento de um código inexistente)
+   - O código NÃO é deletado (preserva histórico de conversões e
+     saldo já acumulado antes da transição)
+
+2. O saldo de cashback de motorista já acumulado (balance.available,
+   balance.total_earned) é PRESERVADO e continua sacável normalmente
+   pelas regras do motorista (seção 16.4) — a transição não confisca
+   dinheiro já ganho.
+
+3. A partir da aprovação, TODA NOVA indicação feita por este usuário
+   (via link de influencer, único meio disponível a partir de agora)
+   gera EXCLUSIVAMENTE comissão de influencer (seção 16.5) — nunca
+   mais cashback de motorista, independente de qualquer tentativa
+   de usar um código antigo.
+
+4. Se o InfluencerProfile for SUSPENSO ou REJEITADO posteriormente
+   (deixar de ser APPROVED), o ReferralCode de motorista é
+   REATIVADO automaticamente (is_active = true), permitindo que o
+   usuário volte a operar como indicador comum. O código permanece
+   o mesmo (DIEGOB45), não é gerado um novo.
+
+REGRA DE CONSULTA (para qualquer endpoint que avalie qual comissão
+aplicar no momento de uma conversão):
+
+  SE existe InfluencerProfile para este user_id E status == APPROVED:
+    aplicar regras de comissão de influencer (seção 16.5)
+    IGNORAR completamente qualquer ReferralCode de motorista deste user
+  SENÃO:
+    aplicar regras de cashback de motorista (seção 16.1–16.4) normalmente
+```
+
+### 16.7 Invariantes do programa (NUNCA violar)
 
 1. Cashback só liberado após `payment.paid` confirmado — nunca antes
 2. Um usuário não pode ser indicado por si mesmo (validar user_id != referrer user_id)
@@ -443,3 +489,7 @@ Suspensão automática do link:
 5. Saldo nunca fica negativo (validar antes de decrementar)
 6. Comissão de influencer só sobre assinantes ATIVOS no mês de referência
 7. Link de influencer suspenso não gera comissão nem trial diferenciado
+8. Um usuário com InfluencerProfile.status=APPROVED nunca gera cashback
+   de motorista para novas conversões — apenas comissão de influencer
+9. A desativação do ReferralCode na transição para influencer nunca
+   apaga saldo ou histórico já existente — apenas bloqueia novos usos

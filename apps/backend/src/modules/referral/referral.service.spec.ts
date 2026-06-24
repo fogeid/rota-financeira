@@ -42,8 +42,10 @@ const mockPrisma: any = {
   },
   referralCode: {
     findUnique: jest.fn(),
+    findFirst: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn(),
   },
   referralBalance: {
     findUnique: jest.fn(),
@@ -61,6 +63,9 @@ const mockPrisma: any = {
     create: jest.fn(),
     findMany: jest.fn(),
     count: jest.fn(),
+  },
+  influencerProfile: {
+    findUnique: jest.fn(),
   },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   $transaction: jest.fn(async (ops: any) => {
@@ -126,27 +131,33 @@ describe('ReferralService', () => {
 
   describe('processReferralOnRegister', () => {
     it('retorna null para código inexistente', async () => {
-      mockPrisma.referralCode.findUnique.mockResolvedValue(null);
+      mockPrisma.referralCode.findFirst.mockResolvedValue(null);
       const result = await service.processReferralOnRegister('user-2', 'INVALID1');
       expect(result).toBeNull();
     });
 
+    it('retorna null para código desativado (is_active=false)', async () => {
+      mockPrisma.referralCode.findFirst.mockResolvedValue(null); // findFirst com is_active:true retorna null
+      const result = await service.processReferralOnRegister('user-2', 'DESAT11');
+      expect(result).toBeNull();
+    });
+
     it('retorna null para auto-indicação', async () => {
-      mockPrisma.referralCode.findUnique.mockResolvedValue({ id: '1', user_id: 'user-1', type: ReferralType.USER });
+      mockPrisma.referralCode.findFirst.mockResolvedValue({ id: '1', user_id: 'user-1', type: ReferralType.USER });
       const result = await service.processReferralOnRegister('user-1', 'CARLOS22');
       expect(result).toBeNull();
       expect(mockPrisma.$transaction).not.toHaveBeenCalled();
     });
 
-    it('retorna 7 dias de trial para código USER', async () => {
-      mockPrisma.referralCode.findUnique.mockResolvedValue({ id: '1', user_id: 'user-1', type: ReferralType.USER });
+    it('retorna 7 dias de trial para código USER ativo', async () => {
+      mockPrisma.referralCode.findFirst.mockResolvedValue({ id: '1', user_id: 'user-1', type: ReferralType.USER });
       mockPrisma.$transaction.mockResolvedValue([]);
       const result = await service.processReferralOnRegister('user-2', 'CARLOS22');
       expect(result).toEqual({ trialDays: 7 });
     });
 
     it('retorna 14 dias de trial para código INFLUENCER', async () => {
-      mockPrisma.referralCode.findUnique.mockResolvedValue({ id: '2', user_id: 'user-1', type: ReferralType.INFLUENCER });
+      mockPrisma.referralCode.findFirst.mockResolvedValue({ id: '2', user_id: 'user-1', type: ReferralType.INFLUENCER });
       mockPrisma.$transaction.mockResolvedValue([]);
       const result = await service.processReferralOnRegister('user-2', 'INFLUEX11');
       expect(result).toEqual({ trialDays: 14 });
@@ -175,6 +186,7 @@ describe('ReferralService', () => {
         id: 'r1', status: ReferralStatus.TRIAL,
         referral_code: { id: 'rc1', type: ReferralType.USER, user_id: 'referrer-1' },
       });
+      mockPrisma.influencerProfile.findUnique.mockResolvedValue(null);
       mockPrisma.referralBalance.findUnique.mockResolvedValue({ user_id: 'referrer-1', conversions: 0 });
       mockPrisma.$transaction.mockResolvedValue([]);
       mockNotifications.create.mockResolvedValue(undefined);
@@ -194,6 +206,7 @@ describe('ReferralService', () => {
         id: 'r1', status: ReferralStatus.TRIAL,
         referral_code: { id: 'rc1', type: ReferralType.USER, user_id: 'referrer-1' },
       });
+      mockPrisma.influencerProfile.findUnique.mockResolvedValue(null);
       mockPrisma.referralBalance.findUnique.mockResolvedValue({ user_id: 'referrer-1', conversions: 0 });
       mockPrisma.$transaction.mockResolvedValue([]);
       mockNotifications.create.mockResolvedValue(undefined);
@@ -214,6 +227,69 @@ describe('ReferralService', () => {
       await service.handlePaymentConversion('user-3');
       expect(mockPrisma.referral.update).toHaveBeenCalled();
       expect(mockPrisma.referralBalance.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('não credita cashback de motorista se referrer virou influencer aprovado após o cadastro', async () => {
+      mockPrisma.referral.findUnique.mockResolvedValue({
+        id: 'r3', status: ReferralStatus.REGISTERED,
+        referral_code: { id: 'rc3', type: ReferralType.USER, user_id: 'ex-motorista-1' },
+      });
+      mockPrisma.influencerProfile.findUnique.mockResolvedValue({ status: 'APPROVED' });
+      mockPrisma.referral.update.mockResolvedValue({});
+
+      await service.handlePaymentConversion('user-4');
+
+      expect(mockPrisma.referralBalance.findUnique).not.toHaveBeenCalled();
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+      expect(mockPrisma.referral.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ status: ReferralStatus.CONVERTED }) }),
+      );
+    });
+  });
+
+  // ── deactivateMotoristCodeForInfluencer / reactivate ───────────────────────
+
+  describe('deactivateMotoristCodeForInfluencer', () => {
+    it('desativa todos os códigos USER do usuário', async () => {
+      mockPrisma.referralCode.updateMany.mockResolvedValue({ count: 1 });
+      await service.deactivateMotoristCodeForInfluencer('user-1');
+      expect(mockPrisma.referralCode.updateMany).toHaveBeenCalledWith({
+        where: { user_id: 'user-1', type: 'USER' },
+        data: { is_active: false },
+      });
+    });
+  });
+
+  describe('reactivateMotoristCodeAfterInfluencerRemoval', () => {
+    it('reativa todos os códigos USER do usuário', async () => {
+      mockPrisma.referralCode.updateMany.mockResolvedValue({ count: 1 });
+      await service.reactivateMotoristCodeAfterInfluencerRemoval('user-1');
+      expect(mockPrisma.referralCode.updateMany).toHaveBeenCalledWith({
+        where: { user_id: 'user-1', type: 'USER' },
+        data: { is_active: true },
+      });
+    });
+  });
+
+  // ── validateCode ────────────────────────────────────────────────────────────
+
+  describe('validateCode', () => {
+    it('retorna valid:false para código desativado (is_active=false)', async () => {
+      mockPrisma.referralCode.findFirst.mockResolvedValueOnce(null);
+      const result = await service.validateCode('DIEGOB45');
+      expect(result).toEqual({ valid: false });
+      expect(mockPrisma.referralCode.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ is_active: true }) }),
+      );
+    });
+
+    it('retorna valid:true com primeiro nome do referrer para código ativo', async () => {
+      mockPrisma.referralCode.findFirst.mockResolvedValueOnce({
+        code: 'CARLOS22',
+        user: { name: 'Carlos Silva' },
+      });
+      const result = await service.validateCode('CARLOS22');
+      expect(result).toEqual({ valid: true, referrer_name: 'Carlos' });
     });
   });
 

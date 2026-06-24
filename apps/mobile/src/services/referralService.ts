@@ -24,6 +24,7 @@ export interface ReferralWithdrawal {
 
 export interface MyReferralResponse {
   code: string;
+  is_active: boolean;
   link: string;
   level: 'INICIANTE' | 'PARCEIRO' | 'EMBAIXADOR';
   conversions: number;

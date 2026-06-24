@@ -73,7 +73,9 @@ export class ReferralService {
     newUserId: string,
     referralCode: string,
   ): Promise<{ trialDays: number } | null> {
-    const code = await this.prisma.referralCode.findUnique({ where: { code: referralCode } });
+    const code = await this.prisma.referralCode.findFirst({
+      where: { code: referralCode, is_active: true },
+    });
 
     if (!code) return null;
     if (code.user_id === newUserId) return null; // invariante: auto-indicação proibida
@@ -113,6 +115,22 @@ export class ReferralService {
 
     if (referral.referral_code.type === ReferralType.INFLUENCER) {
       // Para influencer: apenas atualiza status — comissão calculada no job mensal
+      await this.prisma.referral.update({
+        where: { id: referral.id },
+        data: { status: ReferralStatus.CONVERTED, converted_at: now },
+      });
+      return;
+    }
+
+    // Defesa em profundidade: referral antigo (USER) cujo dono virou influencer depois do cadastro
+    const influencerProfile = await this.prisma.influencerProfile.findUnique({
+      where: { user_id: referral.referral_code.user_id },
+      select: { status: true },
+    });
+    if (influencerProfile?.status === 'APPROVED') {
+      this.logger.log(
+        `[REFERRAL] Conversão ignorada para cashback de motorista — referrer ${referral.referral_code.user_id} é influencer aprovado`,
+      );
       await this.prisma.referral.update({
         where: { id: referral.id },
         data: { status: ReferralStatus.CONVERTED, converted_at: now },
@@ -238,6 +256,7 @@ export class ReferralService {
 
     const result = {
       code: code!.code,
+      is_active: code!.is_active,
       link: `https://rotafinanceira.app/i/${code!.code}`,
       level: getReferralLevel(conversions),
       conversions,
@@ -259,9 +278,25 @@ export class ReferralService {
     return result;
   }
 
+  async deactivateMotoristCodeForInfluencer(userId: string): Promise<void> {
+    await this.prisma.referralCode.updateMany({
+      where: { user_id: userId, type: 'USER' },
+      data: { is_active: false },
+    });
+    this.logger.log(`[REFERRAL] Código de motorista desativado para usuário ${userId} (aprovado como influencer)`);
+  }
+
+  async reactivateMotoristCodeAfterInfluencerRemoval(userId: string): Promise<void> {
+    await this.prisma.referralCode.updateMany({
+      where: { user_id: userId, type: 'USER' },
+      data: { is_active: true },
+    });
+    this.logger.log(`[REFERRAL] Código de motorista reativado para usuário ${userId} (influencer removido/suspenso)`);
+  }
+
   async validateCode(code: string) {
-    const referralCode = await this.prisma.referralCode.findUnique({
-      where: { code },
+    const referralCode = await this.prisma.referralCode.findFirst({
+      where: { code, is_active: true },
       include: { user: { select: { name: true } } },
     });
 
