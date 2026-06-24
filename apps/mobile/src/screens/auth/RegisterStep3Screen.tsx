@@ -27,6 +27,10 @@ const schema = z.object({
     .refine((y) => Number(y) >= 1990 && Number(y) <= CURRENT_YEAR + 1, {
       message: `Ano entre 1990 e ${CURRENT_YEAR + 1}`,
     }),
+  fuel_efficiency: z
+    .string()
+    .regex(/^\d+([.,]\d{1,2})?$/, 'Informe um valor válido (ex: 12,5)')
+    .refine((v) => parseFloat(v.replace(',', '.')) > 0, 'Deve ser maior que zero'),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -48,6 +52,7 @@ export function RegisterStep3Screen({ navigation, route }: Props) {
       brand: data.brand,
       model: data.model,
       year: Number(data.year),
+      fuel_efficiency: parseFloat(data.fuel_efficiency.replace(',', '.')),
     });
   }
 
@@ -125,6 +130,22 @@ export function RegisterStep3Screen({ navigation, route }: Props) {
               value={value}
               onChangeText={onChange}
               error={errors.year?.message}
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="fuel_efficiency"
+          render={({ field: { onChange, value } }) => (
+            <FormInput
+              label="Consumo médio (km/L)"
+              placeholder="Ex: 12,5"
+              keyboardType="decimal-pad"
+              value={value}
+              onChangeText={onChange}
+              hint="Quantos km o carro faz por litro"
+              error={errors.fuel_efficiency?.message}
             />
           )}
         />

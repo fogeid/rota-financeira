@@ -1,23 +1,35 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
+  View, Text, ScrollView, StyleSheet,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { authService } from '../../services/authService';
-import { useRegistrationStore } from '../../store/registrationStore';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { MainStackParamList } from '../../navigation/MainStack';
+import { vehiclesService } from '../../services/vehiclesService';
+import { financingService } from '../../services/financingService';
 import { FormInput, ConfirmButton, AlertBox } from '../../components';
 import { colors, spacing, typography } from '../../theme';
-import type { AuthStackParamList } from '../../navigation/AuthNavigator';
+
+const CURRENT_YEAR = new Date().getFullYear();
 
 const schema = z.object({
+  model: z.string().min(2, 'Informe a marca e modelo'),
+  year: z
+    .string()
+    .regex(/^\d{4}$/, 'Ano inválido')
+    .refine(
+      (y) => Number(y) >= 1990 && Number(y) <= CURRENT_YEAR + 1,
+      `Ano entre 1990 e ${CURRENT_YEAR + 1}`,
+    ),
+  plate: z.string().min(7, 'Placa inválida').max(8),
+  fuel_efficiency: z
+    .string()
+    .regex(/^\d+([.,]\d{1,2})?$/, 'Informe um valor válido (ex: 12,5)')
+    .refine((v) => parseFloat(v.replace(',', '.')) > 0, 'Deve ser maior que zero'),
   monthly_installment: z.string().min(1, 'Informe o valor da parcela'),
   due_day: z
     .string()
@@ -31,17 +43,15 @@ const schema = z.object({
 });
 
 type FormData = z.infer<typeof schema>;
-type Props = NativeStackScreenProps<AuthStackParamList, 'RegisterStep4'>;
 
 function parseBRL(value: string): number {
   return parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0;
 }
 
-export function RegisterStep4Screen({ navigation, route }: Props) {
-  const { phone, name, cpf, email, password, plate, brand, model, year, fuel_efficiency } = route.params;
+export function VehicleSetupScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const { referralCode, setVehicleData, setFinancingData } = useRegistrationStore();
 
   const {
     control,
@@ -53,29 +63,21 @@ export function RegisterStep4Screen({ navigation, route }: Props) {
     setApiError(null);
     setLoading(true);
     try {
-      setVehicleData({ plate, brand, model, year, fuel_efficiency });
-      setFinancingData(data);
-
-      await authService.register({
-        name,
-        cpf,
-        phone,
-        email,
-        password,
-        ...(referralCode ? { referral_code: referralCode } : {}),
+      await vehiclesService.upsertVehicle({
+        model: data.model,
+        year: Number(data.year),
+        plate: data.plate.toUpperCase(),
+        fuel_efficiency: parseFloat(data.fuel_efficiency.replace(',', '.')),
       });
-
-      navigation.navigate('OTP', { phone, purpose: 'REGISTRATION' });
-    } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } }).response?.status;
-      const msg = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
-      if (status === 409) {
-        setApiError('CPF, telefone ou e-mail já cadastrado.');
-      } else if (status === 400) {
-        setApiError(msg ?? 'Dados inválidos. Verifique os campos.');
-      } else {
-        setApiError('Erro de conexão. Tente novamente.');
-      }
+      await financingService.update({
+        monthly_installment: parseBRL(data.monthly_installment),
+        due_day: Number(data.due_day),
+        desired_income: parseBRL(data.desired_income),
+        work_days_per_month: Number(data.work_days_per_month),
+      });
+      navigation.goBack();
+    } catch {
+      setApiError('Erro ao salvar. Verifique sua conexão e tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -91,13 +93,75 @@ export function RegisterStep4Screen({ navigation, route }: Props) {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.step}>Passo 4 de 4</Text>
-        <Text style={styles.title}>Financiamento</Text>
-        <Text style={styles.sub}>
-          Esses dados calculam quanto você precisa ganhar por dia.
-        </Text>
-
         {apiError ? <AlertBox variant="red" message={apiError} style={styles.alert} /> : null}
+
+        <Text style={styles.section}>Veículo</Text>
+
+        <Controller
+          control={control}
+          name="model"
+          render={({ field: { onChange, value } }) => (
+            <FormInput
+              label="Marca e modelo"
+              placeholder="Ex: Toyota Corolla"
+              autoCapitalize="words"
+              value={value}
+              onChangeText={onChange}
+              error={errors.model?.message}
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="year"
+          render={({ field: { onChange, value } }) => (
+            <FormInput
+              label="Ano"
+              placeholder={String(CURRENT_YEAR)}
+              keyboardType="numeric"
+              maxLength={4}
+              value={value}
+              onChangeText={onChange}
+              error={errors.year?.message}
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="plate"
+          render={({ field: { onChange, value } }) => (
+            <FormInput
+              label="Placa"
+              placeholder="ABC-1234 ou ABC1D23"
+              autoCapitalize="characters"
+              maxLength={8}
+              value={value}
+              onChangeText={onChange}
+              error={errors.plate?.message}
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="fuel_efficiency"
+          render={({ field: { onChange, value } }) => (
+            <FormInput
+              label="Consumo médio (km/L)"
+              placeholder="Ex: 12,5"
+              keyboardType="decimal-pad"
+              value={value}
+              onChangeText={onChange}
+              hint="Quantos km o carro faz por litro"
+              error={errors.fuel_efficiency?.message}
+            />
+          )}
+        />
+
+        <View style={styles.divider} />
+        <Text style={styles.section}>Financiamento</Text>
 
         <Controller
           control={control}
@@ -109,7 +173,7 @@ export function RegisterStep4Screen({ navigation, route }: Props) {
               keyboardType="decimal-pad"
               value={value}
               onChangeText={onChange}
-              hint="Valor mensal do financiamento do veículo"
+              hint="Valor mensal do financiamento"
               error={errors.monthly_installment?.message}
             />
           )}
@@ -166,11 +230,13 @@ export function RegisterStep4Screen({ navigation, route }: Props) {
         />
 
         <ConfirmButton
-          label="Finalizar cadastro"
+          label="Salvar"
           onPress={handleSubmit(onSubmit)}
           loading={loading}
           style={styles.btn}
         />
+
+        <View style={{ height: 32 }} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -179,10 +245,21 @@ export function RegisterStep4Screen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.bg },
   scroll: { flex: 1 },
-  content: { padding: spacing.xl, paddingTop: 40, flexGrow: 1 },
-  step: { ...typography.micro, color: colors.green, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
-  title: { fontFamily: 'SpaceGrotesk', fontSize: 26, fontWeight: '700', color: colors.text, marginBottom: 8 },
-  sub: { ...typography.body, color: colors.text2, marginBottom: 32 },
+  content: { padding: spacing.xl, paddingTop: 24 },
+  section: {
+    fontFamily: 'SpaceGrotesk',
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.green,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 16,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: 24,
+  },
   alert: { marginBottom: spacing.lg },
   btn: { marginTop: spacing.md },
 });

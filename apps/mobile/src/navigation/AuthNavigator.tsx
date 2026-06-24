@@ -35,6 +35,7 @@ export type AuthStackParamList = {
     brand: string;
     model: string;
     year: number;
+    fuel_efficiency: number;
   };
   ConnectPlatform: undefined;
   Tutorial: undefined;

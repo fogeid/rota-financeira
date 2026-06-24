@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import type { MainStackParamList } from '../../navigation/MainStack';
 import { colors, spacing, typography, radius } from '../../theme';
 import {
   MetricCard, MetricGrid, Card, AlertBox, WeekBarChart, ProgressBar,
-  SkeletonHeroCard, SkeletonMetricGrid,
+  SkeletonMetricGrid,
 } from '../../components';
 import { useFinancingStore } from '../../store/financingStore';
 import { earningsService } from '../../services/earningsService';
@@ -44,16 +47,46 @@ const HEALTH_ALERT: Record<string, { variant: 'green' | 'amber' | 'red'; text: s
 };
 
 export function MeuCarroScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { data, progress, isLoading, error, load } = useFinancingStore();
   const [weekEarnings, setWeekEarnings] = useState<EarningItem[]>([]);
   const [vehicle, setVehicle] = useState<VehicleData | null>(null);
+  const [vehicleLoading, setVehicleLoading] = useState(true);
 
-  useEffect(() => {
-    load();
-    const thisMonth = new Date().toISOString().slice(0, 7);
-    earningsService.list({ month: thisMonth }).then((res) => setWeekEarnings(res.data)).catch(() => {});
-    vehiclesService.getVehicle().then(setVehicle).catch(() => {});
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      setVehicleLoading(true);
+      load();
+      const thisMonth = new Date().toISOString().slice(0, 7);
+      earningsService.list({ month: thisMonth }).then((res) => setWeekEarnings(res.data)).catch(() => {});
+      vehiclesService
+        .getVehicle()
+        .then((v) => setVehicle(v))
+        .catch(() => setVehicle(null))
+        .finally(() => setVehicleLoading(false));
+    }, []),
+  );
+
+  const initialLoading = vehicleLoading || isLoading;
+
+  if (!initialLoading && !vehicle && !data) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Ionicons name="car-outline" size={56} color={colors.green} style={{ marginBottom: 20 }} />
+        <Text style={styles.emptyTitle}>Configure seu veículo</Text>
+        <Text style={styles.emptySub}>
+          Precisamos dos dados do seu veículo e financiamento para calcular sua meta diária.
+        </Text>
+        <TouchableOpacity
+          style={styles.emptyBtn}
+          onPress={() => navigation.navigate('VehicleSetup')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.emptyBtnText}>Cadastrar agora</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const progressColor =
     !progress ? colors.green
@@ -272,4 +305,23 @@ const styles = StyleSheet.create({
   },
   progressDetailLabel: { ...typography.micro, color: colors.text3, textTransform: 'uppercase', marginBottom: 4 },
   progressDetailValue: { fontFamily: 'SpaceGrotesk', fontSize: 15, fontWeight: '700', color: colors.text },
+  emptyContainer: {
+    flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  emptyTitle: {
+    fontFamily: 'SpaceGrotesk', fontSize: 22, fontWeight: '700', color: colors.text,
+    textAlign: 'center', marginBottom: 12,
+  },
+  emptySub: {
+    ...typography.body, color: colors.text2, textAlign: 'center', lineHeight: 22,
+    marginBottom: 32,
+  },
+  emptyBtn: {
+    backgroundColor: colors.green, borderRadius: radius.md,
+    paddingVertical: 14, paddingHorizontal: 32, alignItems: 'center',
+  },
+  emptyBtnText: {
+    fontFamily: 'SpaceGrotesk', fontSize: 15, fontWeight: '700', color: '#0F1117',
+  },
 });

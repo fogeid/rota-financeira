@@ -9,6 +9,7 @@ import { PixScreen } from '../screens/main/PixScreen';
 import { PaymentSuccessScreen } from '../screens/main/PaymentSuccessScreen';
 import { ImportCSVScreen } from '../screens/integrations/ImportCSVScreen';
 import { RotaIndicaScreen } from '../screens/referral/RotaIndicaScreen';
+import { VehicleSetupScreen } from '../screens/main/VehicleSetupScreen';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
 export type MainStackParamList = {
@@ -20,6 +21,7 @@ export type MainStackParamList = {
   PaymentSuccess: { method: 'card' | 'pix'; planId: string };
   ImportCSV: { platform: string };
   RotaIndica: undefined;
+  VehicleSetup: undefined;
 };
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -35,7 +37,7 @@ export function MainStack() {
   return (
     <Stack.Navigator screenOptions={STACK_SCREEN_OPTIONS}>
       <Stack.Screen name="Tabs" component={MainNavigator} options={{ headerShown: false }} />
-      <Stack.Screen name="Upgrade" component={UpgradeScreen} options={{ title: 'Assinar Pro' }} />
+      <Stack.Screen name="Upgrade" component={UpgradeScreen} options={{ title: 'Assinar Premium' }} />
       <Stack.Screen name="Payment" component={PaymentScreen} options={{ title: 'Forma de pagamento' }} />
       <Stack.Screen name="Cartao" component={CartaoScreen} options={{ title: 'Dados do cartão' }} />
       <Stack.Screen name="Pix" component={PixScreen} options={{ title: 'Pagar com PIX' }} />
@@ -55,6 +57,11 @@ export function MainStack() {
       >
         {() => <ErrorBoundary fallbackTitle="Erro na tela Rota Indica"><RotaIndicaScreen /></ErrorBoundary>}
       </Stack.Screen>
+      <Stack.Screen
+        name="VehicleSetup"
+        component={VehicleSetupScreen}
+        options={{ title: 'Veículo e financiamento' }}
+      />
     </Stack.Navigator>
   );
 }

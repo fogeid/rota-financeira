@@ -5,13 +5,14 @@ interface VehicleData {
   brand: string;
   model: string;
   year: number;
+  fuel_efficiency: number;
 }
 
 interface FinancingData {
-  installmentValue: string;
-  totalInstallments: string;
-  remainingInstallments: string;
-  desiredIncome: string;
+  monthly_installment: string;
+  due_day: string;
+  desired_income: string;
+  work_days_per_month: string;
 }
 
 interface RegistrationState {
