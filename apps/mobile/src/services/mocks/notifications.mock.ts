@@ -34,7 +34,7 @@ let MOCK_NOTIFICATIONS: NotificationItem[] = [
   {
     id: 'n6', type: 'TRIAL_EXPIRING', is_read: true,
     title: 'Trial expira em 3 dias',
-    body: 'Seu período gratuito Pro expira em 19/06. Assine para não perder acesso.',
+    body: 'Seu período gratuito Premium expira em 19/06. Assine para não perder acesso.',
     created_at: new Date(Date.now() - 4 * 86400000).toISOString(),
   },
 ];

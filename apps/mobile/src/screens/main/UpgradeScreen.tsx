@@ -48,7 +48,7 @@ export function UpgradeScreen({ navigation }: Props) {
         <View style={styles.heroIcon}>
           <Ionicons name="star" size={32} color={colors.amber} />
         </View>
-        <Text style={styles.heroTitle}>Rota Financeira Pro</Text>
+        <Text style={styles.heroTitle}>Rota Financeira Premium</Text>
         <Text style={styles.heroSub}>
           Automação completa para motoristas que levam o financeiro a sério.
         </Text>
@@ -92,7 +92,7 @@ export function UpgradeScreen({ navigation }: Props) {
           ))}
         </View>
         <View style={[styles.comparisonCol, styles.comparisonColPro]}>
-          <Text style={[styles.comparisonHeader, { color: colors.amber }]}>Pro ⭐</Text>
+          <Text style={[styles.comparisonHeader, { color: colors.amber }]}>Premium ⭐</Text>
           {PRO_FEATURES.map((f) => (
             <View key={f.label} style={styles.featureRow}>
               <Ionicons name="checkmark-circle" size={14} color={colors.amber} />
