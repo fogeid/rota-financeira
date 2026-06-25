@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { OtpPurpose, Plan } from '@prisma/client';
 import { ReferralService } from '../referral/referral.service';
 import * as bcrypt from 'bcrypt';
@@ -167,6 +167,10 @@ export class AuthService {
       }
 
       throw new UnauthorizedException('Credenciais inválidas');
+    }
+
+    if (!user.is_active) {
+      throw new ForbiddenException('Esta conta foi desativada. Contate o suporte.');
     }
 
     await this.loginThrottle.reset(cpfHash);

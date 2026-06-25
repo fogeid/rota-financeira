@@ -179,6 +179,10 @@ export class AdminService {
     if (!user) throw new NotFoundException('Usuário não encontrado');
 
     await this.prisma.user.update({ where: { id: userId }, data: { is_active: false } });
+    await this.prisma.refreshToken.updateMany({
+      where: { user_id: userId, revoked_at: null },
+      data: { revoked_at: new Date() },
+    });
     await this.auditService.log(adminId, 'deactivate_user', 'User', userId);
 
     return { message: 'Usuário desativado' };

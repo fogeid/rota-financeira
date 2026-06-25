@@ -14,6 +14,7 @@ const mockPrisma = {
   cost: { aggregate: jest.fn() },
   payment: { aggregate: jest.fn() },
   referral: { count: jest.fn() },
+  refreshToken: { updateMany: jest.fn() },
   influencerProfile: { count: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
   influencerCommission: { aggregate: jest.fn(), findMany: jest.fn() },
   referralWithdrawal: { aggregate: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
@@ -220,14 +221,19 @@ describe('AdminService', () => {
   });
 
   describe('deactivateUser', () => {
-    it('desativa usuário e gera audit log', async () => {
+    it('desativa usuário, revoga todos os refresh tokens ativos e gera audit log', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({ id: 'u1', is_active: true });
+      mockPrisma.refreshToken.updateMany.mockResolvedValue({ count: 2 });
 
       await service.deactivateUser('u1', 'admin-id');
 
       expect(mockPrisma.user.update).toHaveBeenCalledWith(
         expect.objectContaining({ data: { is_active: false } }),
       );
+      expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { user_id: 'u1', revoked_at: null },
+        data: { revoked_at: expect.any(Date) },
+      });
       expect(mockAuditService.log).toHaveBeenCalledWith('admin-id', 'deactivate_user', 'User', 'u1');
     });
   });

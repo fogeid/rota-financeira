@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, HttpException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, UnauthorizedException } from '@nestjs/common';
 import { OtpPurpose, Plan } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { EncryptionService } from '../../common/services/encryption.service';
@@ -41,6 +41,7 @@ describe('AuthService', () => {
     plan: Plan.FREE,
     trial_ends_at: null,
     deleted_at: null as Date | null,
+    is_active: true,
   };
 
   beforeEach(() => {
@@ -184,6 +185,14 @@ describe('AuthService', () => {
       prisma.user.findUnique.mockResolvedValue({ ...baseUser, password_hash, deleted_at: new Date() });
 
       await expect(service.login(dto, '127.0.0.1')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('rejeita login com 403 para conta desativada via painel admin mesmo com senha correta', async () => {
+      const password_hash = await bcrypt.hash('Senha@123', BCRYPT_COST_FOR_TESTS);
+      prisma.user.findUnique.mockResolvedValue({ ...baseUser, password_hash, is_active: false });
+
+      await expect(service.login(dto, '127.0.0.1')).rejects.toThrow(ForbiddenException);
+      expect(tokenService.issueTokenPair).not.toHaveBeenCalled();
     });
 
     it('bloqueia a conta (HTTP 423) ao atingir a 5ª tentativa falha consecutiva', async () => {

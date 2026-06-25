@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Plan } from '@prisma/client';
@@ -66,6 +66,10 @@ export class TokenService {
 
     if (!stored || stored.revoked_at || stored.expires_at < new Date()) {
       return null;
+    }
+
+    if (!stored.user.is_active) {
+      throw new ForbiddenException('Esta conta foi desativada. Contate o suporte.');
     }
 
     await this.prisma.refreshToken.update({
