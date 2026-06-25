@@ -11,6 +11,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../common/services/email.service';
+import { EncryptionService } from '../../common/services/encryption.service';
+import { ReferralService } from '../referral/referral.service';
 import { ApplyInfluencerDto } from './dto/apply-influencer.dto';
 import { UpdatePixKeyDto } from './dto/update-pix-key.dto';
 import { getTierByFollowers } from './influencer.constants';
@@ -20,6 +22,8 @@ export class InfluencerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
+    private readonly encryption: EncryptionService,
+    private readonly referralService: ReferralService,
     @Inject('LOGGER') private readonly logger: LoggerService,
   ) {}
 
@@ -196,6 +200,32 @@ export class InfluencerService {
     });
 
     return { message: 'Chave PIX atualizada com sucesso', pix_key: dto.pix_key };
+  }
+
+  /** PATCH /admin/influencer/:id/approve — aprova influencer e desativa código de motorista. */
+  async approveInfluencer(profileId: string): Promise<void> {
+    const profile = await this.prisma.influencerProfile.findUnique({ where: { id: profileId } });
+    if (!profile) throw new NotFoundException('Perfil de influencer não encontrado');
+
+    await this.prisma.influencerProfile.update({
+      where: { id: profileId },
+      data: { status: InfluencerStatus.APPROVED, approved_at: new Date() },
+    });
+
+    await this.referralService.deactivateMotoristCodeForInfluencer(profile.user_id);
+  }
+
+  /** PATCH /admin/influencer/:id/suspend — suspende ou rejeita influencer e reativa código de motorista. */
+  async suspendOrRejectInfluencer(profileId: string, newStatus: 'SUSPENDED' | 'REJECTED'): Promise<void> {
+    const profile = await this.prisma.influencerProfile.findUnique({ where: { id: profileId } });
+    if (!profile) throw new NotFoundException('Perfil de influencer não encontrado');
+
+    await this.prisma.influencerProfile.update({
+      where: { id: profileId },
+      data: { status: newStatus as InfluencerStatus },
+    });
+
+    await this.referralService.reactivateMotoristCodeAfterInfluencerRemoval(profile.user_id);
   }
 
   /**

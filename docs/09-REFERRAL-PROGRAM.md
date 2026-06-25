@@ -41,9 +41,9 @@ Usuário compartilha link/código → Amigo se cadastra → Amigo assina Premium
 | Parceiro | 15 – 29 | R$ 6,00 |
 | Embaixador | 30+ | R$ 7,00 |
 
-- Cashback liberado apenas após **pagamento confirmado** pelo webhook do Pagar.me
+- Cashback liberado **imediatamente** após pagamento confirmado pelo webhook do Pagar.me (sem período de espera/D+30 — diferente da comissão de influencer)
 - Cashback é **único por conversão** (não recorrente)
-- Saque via PIX com mínimo de **R$ 20,00** (equivale a 4 indicações no nível Iniciante)
+- Saque via PIX liberado quando o motorista atinge **R$ 20,00 em saldo OU 4 indicações convertidas** (o que vier primeiro)
 - Sem limite máximo de indicações por usuário
 
 ### 2.3 Tela "Rota Indica" no App

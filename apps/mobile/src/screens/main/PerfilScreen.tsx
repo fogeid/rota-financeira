@@ -851,7 +851,7 @@ export function PerfilScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.userName}>{user?.name ?? 'Motorista'}</Text>
           <View style={styles.planRow}>
-            <Badge variant={isPro ? 'green' : 'blue'} label={isPro ? 'Pro' : 'Gratuito'} />
+            <Badge variant={isPro ? 'green' : 'blue'} label={isPro ? 'Premium' : 'Gratuito'} />
             {trialDaysLeft !== null && trialDaysLeft > 0 && (
               <Text style={styles.trialText}>Trial · {trialDaysLeft} dias restantes</Text>
             )}
@@ -870,7 +870,7 @@ export function PerfilScreen() {
           <>
             <SettingRow
               icon="star-outline"
-              label="Plano Pro ativo"
+              label="Plano Premium ativo"
               value={subscriptionInfo?.billing_cycle === 'YEARLY' ? 'Anual' : 'Mensal'}
               onPress={() => {}}
             />
@@ -888,7 +888,7 @@ export function PerfilScreen() {
         ) : (
           <SettingRow
             icon="star-outline"
-            label="Fazer upgrade para Pro"
+            label="Fazer upgrade para Premium"
             onPress={() => navigation.navigate('Upgrade')}
             isLast
           />

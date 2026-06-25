@@ -73,7 +73,9 @@ export class ReferralService {
     newUserId: string,
     referralCode: string,
   ): Promise<{ trialDays: number } | null> {
-    const code = await this.prisma.referralCode.findUnique({ where: { code: referralCode } });
+    const code = await this.prisma.referralCode.findFirst({
+      where: { code: referralCode, is_active: true },
+    });
 
     if (!code) return null;
     if (code.user_id === newUserId) return null; // invariante: auto-indicação proibida
@@ -120,6 +122,22 @@ export class ReferralService {
       return;
     }
 
+    // Defesa em profundidade: referral antigo (USER) cujo dono virou influencer depois do cadastro
+    const influencerProfile = await this.prisma.influencerProfile.findUnique({
+      where: { user_id: referral.referral_code.user_id },
+      select: { status: true },
+    });
+    if (influencerProfile?.status === 'APPROVED') {
+      this.logger.log(
+        `[REFERRAL] Conversão ignorada para cashback de motorista — referrer ${referral.referral_code.user_id} é influencer aprovado`,
+      );
+      await this.prisma.referral.update({
+        where: { id: referral.id },
+        data: { status: ReferralStatus.CONVERTED, converted_at: now },
+      });
+      return;
+    }
+
     // Canal motorista: calcular cashback pelo nível APÓS esta conversão
     const balance = await this.prisma.referralBalance.findUnique({
       where: { user_id: referral.referral_code.user_id },
@@ -139,7 +157,7 @@ export class ReferralService {
       this.prisma.referralBalance.update({
         where: { user_id: referral.referral_code.user_id },
         data: {
-          pending: { increment: cashbackAmount },
+          available: { increment: cashbackAmount },
           total_earned: { increment: cashbackAmount },
           conversions: { increment: 1 },
         },
@@ -147,15 +165,15 @@ export class ReferralService {
     ]);
 
     await this.notifications.create(referral.referral_code.user_id, {
-      type: NotificationType.CASHBACK_PENDING,
-      title: 'Nova conversão!',
-      body: `R$ ${cashbackAmount.toFixed(2).replace('.', ',')} de cashback ficará disponível em 30 dias.`,
+      type: NotificationType.CASHBACK_AVAILABLE,
+      title: 'Cashback disponível!',
+      body: `R$ ${cashbackAmount.toFixed(2).replace('.', ',')} já estão disponíveis para saque.`,
     });
 
     await this.cache.del(referralCacheKey(referral.referral_code.user_id));
 
     this.logger.log({
-      message: 'Cashback pendente creditado',
+      message: 'Cashback disponível creditado',
       referrerUserId: referral.referral_code.user_id,
       cashbackAmount,
       newConversions,
@@ -238,13 +256,14 @@ export class ReferralService {
 
     const result = {
       code: code!.code,
+      is_active: code!.is_active,
       link: `https://rotafinanceira.app/i/${code!.code}`,
       level: getReferralLevel(conversions),
       conversions,
       next_level_at: getNextLevelAt(conversions),
       balance: {
         available: Number(balance?.available ?? 0),
-        pending: Number(balance?.pending ?? 0),
+        pending: 0,
         total_earned: Number(balance?.total_earned ?? 0),
         total_withdrawn: Number(balance?.total_withdrawn ?? 0),
       },
@@ -259,9 +278,25 @@ export class ReferralService {
     return result;
   }
 
+  async deactivateMotoristCodeForInfluencer(userId: string): Promise<void> {
+    await this.prisma.referralCode.updateMany({
+      where: { user_id: userId, type: 'USER' },
+      data: { is_active: false },
+    });
+    this.logger.log(`[REFERRAL] Código de motorista desativado para usuário ${userId} (aprovado como influencer)`);
+  }
+
+  async reactivateMotoristCodeAfterInfluencerRemoval(userId: string): Promise<void> {
+    await this.prisma.referralCode.updateMany({
+      where: { user_id: userId, type: 'USER' },
+      data: { is_active: true },
+    });
+    this.logger.log(`[REFERRAL] Código de motorista reativado para usuário ${userId} (influencer removido/suspenso)`);
+  }
+
   async validateCode(code: string) {
-    const referralCode = await this.prisma.referralCode.findUnique({
-      where: { code },
+    const referralCode = await this.prisma.referralCode.findFirst({
+      where: { code, is_active: true },
       include: { user: { select: { name: true } } },
     });
 
@@ -278,9 +313,15 @@ export class ReferralService {
   async withdraw(userId: string, dto: WithdrawDto) {
     const balance = await this.prisma.referralBalance.findUnique({ where: { user_id: userId } });
     const available = Number(balance?.available ?? 0);
+    const conversions = Number(balance?.conversions ?? 0);
 
-    if (available < MIN_WITHDRAWAL_AMOUNT) {
-      throw new BadRequestException('Saldo insuficiente. Mínimo R$ 20,00');
+    const meetsMinimumBalance = available >= MIN_WITHDRAWAL_AMOUNT;
+    const meetsMinimumConversions = conversions >= 4;
+
+    if (!meetsMinimumBalance && !meetsMinimumConversions) {
+      throw new BadRequestException(
+        'Saque liberado a partir de R$ 20,00 em saldo ou 4 indicações convertidas.',
+      );
     }
     if (dto.amount > available) {
       throw new BadRequestException('Valor solicitado maior que o saldo disponível');

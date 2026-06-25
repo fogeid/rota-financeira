@@ -22,6 +22,7 @@ import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { ReferralModule } from './modules/referral/referral.module';
 import { InfluencerModule } from './modules/influencer/influencer.module';
+import { AdminModule } from './modules/admin/admin.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { TaxesModule } from './modules/taxes/taxes.module';
@@ -99,6 +100,7 @@ import { REDIS_CLIENT, RedisModule } from './redis/redis.module';
     SubscriptionsModule,
     ReferralModule,
     InfluencerModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [

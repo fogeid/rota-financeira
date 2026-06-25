@@ -57,16 +57,16 @@ export function OTPScreen({ navigation, route }: Props) {
         const { vehicleData, financingData, reset } = useRegistrationStore.getState();
         if (vehicleData && financingData) {
           await api.post('/vehicles', {
-            plate: vehicleData.plate,
-            brand: vehicleData.brand,
-            model: vehicleData.model,
+            model: `${vehicleData.brand} ${vehicleData.model}`.trim(),
             year: vehicleData.year,
-            financing: {
-              installment_value: parseBRL(financingData.installmentValue),
-              total_installments: Number(financingData.totalInstallments),
-              remaining_installments: Number(financingData.remainingInstallments),
-              desired_net_income: parseBRL(financingData.desiredIncome),
-            },
+            plate: vehicleData.plate,
+            fuel_efficiency: vehicleData.fuel_efficiency,
+          });
+          await api.post('/financing/me', {
+            monthly_installment: parseBRL(financingData.monthly_installment),
+            due_day: Number(financingData.due_day),
+            desired_income: parseBRL(financingData.desired_income),
+            work_days_per_month: Number(financingData.work_days_per_month),
           });
         }
         reset();

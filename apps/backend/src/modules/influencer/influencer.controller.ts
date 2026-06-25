@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Public } from '../../common/decorators/public.decorator';
@@ -38,5 +38,23 @@ export class InfluencerController {
   @ApiOperation({ summary: 'Cadastra ou atualiza chave PIX do influencer' })
   updatePixKey(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdatePixKeyDto) {
     return this.influencerService.updatePixKey(user.sub, dto);
+  }
+
+  @Patch('admin/:id/approve')
+  @ApiOperation({ summary: '[Admin] Aprova influencer e desativa código de motorista' })
+  approveInfluencer(@Param('id') id: string) {
+    return this.influencerService.approveInfluencer(id);
+  }
+
+  @Patch('admin/:id/suspend')
+  @ApiOperation({ summary: '[Admin] Suspende influencer e reativa código de motorista' })
+  suspendInfluencer(@Param('id') id: string) {
+    return this.influencerService.suspendOrRejectInfluencer(id, 'SUSPENDED');
+  }
+
+  @Patch('admin/:id/reject')
+  @ApiOperation({ summary: '[Admin] Rejeita influencer e reativa código de motorista' })
+  rejectInfluencer(@Param('id') id: string) {
+    return this.influencerService.suspendOrRejectInfluencer(id, 'REJECTED');
   }
 }

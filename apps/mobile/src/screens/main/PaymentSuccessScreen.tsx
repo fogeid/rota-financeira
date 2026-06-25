@@ -36,7 +36,7 @@ export function PaymentSuccessScreen({ route, navigation }: Props) {
 
       <Text style={styles.title}>Assinatura ativada!</Text>
       <Text style={styles.sub}>
-        Bem-vindo ao Rota Financeira Pro. Você agora tem acesso completo a todos os recursos.
+        Bem-vindo ao Rota Financeira Premium. Você agora tem acesso completo a todos os recursos.
       </Text>
 
       <View style={styles.detailCard}>
@@ -61,7 +61,7 @@ export function PaymentSuccessScreen({ route, navigation }: Props) {
         onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] })}
         activeOpacity={0.85}
       >
-        <Text style={styles.ctaText}>Começar a usar o Pro</Text>
+        <Text style={styles.ctaText}>Começar a usar o Premium</Text>
         <Ionicons name="arrow-forward" size={18} color={colors.bg} />
       </TouchableOpacity>
 

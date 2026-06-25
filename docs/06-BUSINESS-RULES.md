@@ -341,13 +341,20 @@ recebe R$ 5,00 — mesmo que suba de nível depois.
 2. Backend verifica se o assinante veio por referral_code
 3. Se sim: busca o indicador pelo referral_code
 4. Calcula cashback conforme nível atual do indicador
-5. Incrementa referral_balance.pending += cashback_amount
+5. Incrementa referral_balance.available += cashback_amount  (LIBERAÇÃO IMEDIATA — sem D+30)
 6. Incrementa referral_balance.total_earned += cashback_amount
 7. Incrementa referral_code.conversions += 1
 8. Atualiza referral.status = CONVERTED
-9. Job D+30: move pending → available
-10. Push notification: "R$ X,00 de cashback liberado!"
+9. Push notification: "R$ X,00 de cashback disponível para saque!"
 ```
+
+NOTA: O cashback do motorista é liberado IMEDIATAMENTE em `available`
+no momento da conversão — não há período de espera (D+30) para esta
+modalidade. O D+30 mencionado em outras seções deste documento se
+aplica exclusivamente à comissão recorrente de INFLUENCERS (seção
+16.5), que é um modelo de risco diferente (pagamento mensal contínuo,
+não um valor único). Para o motorista, o risco de chargeback é
+absorvido pela empresa, não pelo indicador.
 
 ### 16.3 Trial do indicado
 
@@ -370,16 +377,32 @@ Verificação no cadastro:
 ### 16.4 Regras de saque
 
 ```
-Condições para saque:
+Condições para saque (OU — basta uma das duas):
   balance.available >= 20.00
+  OU
+  referral_code.conversions >= 4
+
+Isso significa que o motorista pode sacar mesmo com saldo abaixo de
+R$ 20,00, desde que já tenha 4 indicações convertidas no histórico
+(ex.: nível Iniciante com 4 conversões = R$ 20,00 exatos — na prática
+as duas condições convergem no nível Iniciante; a condição por
+quantidade passa a importar de verdade se algum ajuste futuro de
+valor por nível fizer o total de 4 conversões ficar abaixo de R$ 20).
 
 Processamento:
-  1. Criar ReferralWithdrawal com status=PENDING
-  2. Decrementar balance.available -= amount
-  3. Incrementar balance.total_withdrawn += amount
-  4. Processar PIX via Pagar.me em até 1 dia útil
-  5. Atualizar status para PAID ou FAILED
-  6. SE FAILED: devolver saldo (available += amount)
+  1. Validar: available >= 20.00 OU conversions >= 4
+  2. Criar ReferralWithdrawal com status=PENDING
+  3. Decrementar balance.available -= amount
+  4. Incrementar balance.total_withdrawn += amount
+  5. Processar PIX via Pagar.me em até 1 dia útil
+  6. Atualizar status para PAID ou FAILED
+  7. SE FAILED: devolver saldo (available += amount)
+
+IMPORTANTE: o valor sacável é sempre balance.available (o saldo em
+reais), independente de qual das duas condições liberou o saque. A
+condição por "4 indicações" libera o ACESSO ao saque mesmo com saldo
+baixo, mas o motorista só recebe o que de fato tem em available —
+não há valor extra por atingir a contagem de indicações.
 
 Revisão manual automática:
   SE count(withdrawals no mês) > 10: flaggar para revisão antes de processar
@@ -411,7 +434,53 @@ Suspensão automática do link:
     notificar equipe para revisão
 ```
 
-### 16.6 Invariantes do programa (NUNCA violar)
+### 16.6 Transição de Motorista para Influencer (mudança de modo)
+
+```
+Quando um InfluencerProfile.status muda para APPROVED, o usuário
+DEIXA de operar no modo "motorista comum" do programa de indicação
+e passa a operar EXCLUSIVAMENTE no modo "influencer". Não há
+coexistência dos dois sistemas para a mesma pessoa.
+
+O QUE ACONTECE NO MOMENTO DA APROVAÇÃO:
+
+1. O ReferralCode (código de motorista, ex: DIEGOB45) é DESATIVADO:
+   - ReferralCode.is_active = false
+   - O código deixa de ser aceito em GET /referral/validate/:code
+     e em POST /auth/register (qualquer cadastro tentando usar
+     DIEGOB45 a partir deste momento recebe "Código não encontrado",
+     idêntico ao comportamento de um código inexistente)
+   - O código NÃO é deletado (preserva histórico de conversões e
+     saldo já acumulado antes da transição)
+
+2. O saldo de cashback de motorista já acumulado (balance.available,
+   balance.total_earned) é PRESERVADO e continua sacável normalmente
+   pelas regras do motorista (seção 16.4) — a transição não confisca
+   dinheiro já ganho.
+
+3. A partir da aprovação, TODA NOVA indicação feita por este usuário
+   (via link de influencer, único meio disponível a partir de agora)
+   gera EXCLUSIVAMENTE comissão de influencer (seção 16.5) — nunca
+   mais cashback de motorista, independente de qualquer tentativa
+   de usar um código antigo.
+
+4. Se o InfluencerProfile for SUSPENSO ou REJEITADO posteriormente
+   (deixar de ser APPROVED), o ReferralCode de motorista é
+   REATIVADO automaticamente (is_active = true), permitindo que o
+   usuário volte a operar como indicador comum. O código permanece
+   o mesmo (DIEGOB45), não é gerado um novo.
+
+REGRA DE CONSULTA (para qualquer endpoint que avalie qual comissão
+aplicar no momento de uma conversão):
+
+  SE existe InfluencerProfile para este user_id E status == APPROVED:
+    aplicar regras de comissão de influencer (seção 16.5)
+    IGNORAR completamente qualquer ReferralCode de motorista deste user
+  SENÃO:
+    aplicar regras de cashback de motorista (seção 16.1–16.4) normalmente
+```
+
+### 16.7 Invariantes do programa (NUNCA violar)
 
 1. Cashback só liberado após `payment.paid` confirmado — nunca antes
 2. Um usuário não pode ser indicado por si mesmo (validar user_id != referrer user_id)
@@ -420,3 +489,7 @@ Suspensão automática do link:
 5. Saldo nunca fica negativo (validar antes de decrementar)
 6. Comissão de influencer só sobre assinantes ATIVOS no mês de referência
 7. Link de influencer suspenso não gera comissão nem trial diferenciado
+8. Um usuário com InfluencerProfile.status=APPROVED nunca gera cashback
+   de motorista para novas conversões — apenas comissão de influencer
+9. A desativação do ReferralCode na transição para influencer nunca
+   apaga saldo ou histórico já existente — apenas bloqueia novos usos

@@ -18,17 +18,17 @@ import { colors, spacing, typography } from '../../theme';
 import type { AuthStackParamList } from '../../navigation/AuthNavigator';
 
 const schema = z.object({
-  installmentValue: z.string().min(1, 'Informe o valor da parcela'),
-  totalInstallments: z
+  monthly_installment: z.string().min(1, 'Informe o valor da parcela'),
+  due_day: z
+    .string()
+    .regex(/^\d+$/, 'Dia inválido')
+    .refine((v) => Number(v) >= 1 && Number(v) <= 28, 'Dia entre 1 e 28'),
+  desired_income: z.string().min(1, 'Informe a renda desejada'),
+  work_days_per_month: z
     .string()
     .regex(/^\d+$/, 'Número inválido')
-    .refine((v) => Number(v) >= 1 && Number(v) <= 120, 'Entre 1 e 120 parcelas'),
-  remainingInstallments: z.string().regex(/^\d+$/, 'Número inválido'),
-  desiredIncome: z.string().min(1, 'Informe a renda desejada'),
-}).refine(
-  (d) => Number(d.remainingInstallments) <= Number(d.totalInstallments),
-  { message: 'Parcelas restantes não pode ser maior que o total', path: ['remainingInstallments'] },
-);
+    .refine((v) => Number(v) >= 1 && Number(v) <= 30, 'Entre 1 e 30 dias'),
+});
 
 type FormData = z.infer<typeof schema>;
 type Props = NativeStackScreenProps<AuthStackParamList, 'RegisterStep4'>;
@@ -38,7 +38,7 @@ function parseBRL(value: string): number {
 }
 
 export function RegisterStep4Screen({ navigation, route }: Props) {
-  const { phone, name, cpf, email, password, plate, brand, model, year } = route.params;
+  const { phone, name, cpf, email, password, plate, brand, model, year, fuel_efficiency } = route.params;
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { referralCode, setVehicleData, setFinancingData } = useRegistrationStore();
@@ -53,8 +53,7 @@ export function RegisterStep4Screen({ navigation, route }: Props) {
     setApiError(null);
     setLoading(true);
     try {
-      // Persist vehicle + financing for use after OTP verification
-      setVehicleData({ plate, brand, model, year });
+      setVehicleData({ plate, brand, model, year, fuel_efficiency });
       setFinancingData(data);
 
       await authService.register({
@@ -102,64 +101,66 @@ export function RegisterStep4Screen({ navigation, route }: Props) {
 
         <Controller
           control={control}
-          name="installmentValue"
+          name="monthly_installment"
           render={({ field: { onChange, value } }) => (
             <FormInput
               label="Valor da parcela (R$)"
               placeholder="1.200,00"
-              keyboardType="numeric"
+              keyboardType="decimal-pad"
               value={value}
               onChangeText={onChange}
               hint="Valor mensal do financiamento do veículo"
-              error={errors.installmentValue?.message}
+              error={errors.monthly_installment?.message}
             />
           )}
         />
 
         <Controller
           control={control}
-          name="totalInstallments"
+          name="due_day"
           render={({ field: { onChange, value } }) => (
             <FormInput
-              label="Total de parcelas"
-              placeholder="48"
+              label="Dia do vencimento"
+              placeholder="25"
               keyboardType="numeric"
-              maxLength={3}
+              maxLength={2}
               value={value}
               onChangeText={onChange}
-              error={errors.totalInstallments?.message}
+              hint="Dia do mês em que a parcela vence (1–28)"
+              error={errors.due_day?.message}
             />
           )}
         />
 
         <Controller
           control={control}
-          name="remainingInstallments"
-          render={({ field: { onChange, value } }) => (
-            <FormInput
-              label="Parcelas restantes"
-              placeholder="36"
-              keyboardType="numeric"
-              maxLength={3}
-              value={value}
-              onChangeText={onChange}
-              error={errors.remainingInstallments?.message}
-            />
-          )}
-        />
-
-        <Controller
-          control={control}
-          name="desiredIncome"
+          name="desired_income"
           render={({ field: { onChange, value } }) => (
             <FormInput
               label="Renda líquida desejada (R$)"
               placeholder="3.000,00"
-              keyboardType="numeric"
+              keyboardType="decimal-pad"
               value={value}
               onChangeText={onChange}
               hint="Quanto quer ganhar além da parcela, por mês"
-              error={errors.desiredIncome?.message}
+              error={errors.desired_income?.message}
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="work_days_per_month"
+          render={({ field: { onChange, value } }) => (
+            <FormInput
+              label="Dias de trabalho por mês"
+              placeholder="22"
+              keyboardType="numeric"
+              maxLength={2}
+              value={value}
+              onChangeText={onChange}
+              hint="Quantos dias por mês você costuma trabalhar"
+              error={errors.work_days_per_month?.message}
             />
           )}
         />
