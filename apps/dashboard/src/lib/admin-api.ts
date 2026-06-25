@@ -71,6 +71,7 @@ export interface AdminUser {
 export interface AdminUserDetail extends AdminUser {
   trial_ends_at: string | null;
   plan_expires_at: string | null;
+  subscription_status: string | null;
   current_month_summary: { earnings: number; costs: number };
 }
 

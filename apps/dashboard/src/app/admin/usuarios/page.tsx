@@ -105,7 +105,7 @@ export default function UsuariosPage() {
                     <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded ${
                       u.plan === 'PRO' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
                     }`}>
-                      {u.plan}
+                      {u.plan === 'PRO' ? 'Premium' : 'Gratuito'}
                     </span>
                   </td>
                   <td className="px-4 py-3">

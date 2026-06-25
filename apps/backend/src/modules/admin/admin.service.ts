@@ -153,6 +153,8 @@ export class AdminService {
       }),
     ]);
 
+    const latestSubscription = user.subscriptions[0] ?? null;
+
     return {
       id: user.id,
       name: user.name,
@@ -160,6 +162,7 @@ export class AdminService {
       email_masked: maskEmail(this.encryption.decrypt(user.email)),
       phone_masked: maskPhone(this.encryption.decrypt(user.phone)),
       plan: user.plan,
+      subscription_status: latestSubscription?.status ?? null,
       is_active: user.is_active,
       created_at: user.created_at,
       trial_ends_at: user.trial_ends_at,

@@ -92,8 +92,24 @@ export default function UsuarioDetailPage() {
             <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded ${
               user.plan === 'PRO' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
             }`}>
-              {user.plan}
+              {user.plan === 'PRO' ? 'Premium' : 'Gratuito'}
             </span>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-1">Assinatura</p>
+            <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded ${
+              user.subscription_status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' :
+              user.subscription_status === 'TRIAL' ? 'bg-blue-50 text-blue-700' :
+              user.subscription_status ? 'bg-amber-50 text-amber-700' :
+              'bg-slate-100 text-slate-400'
+            }`}>
+              {user.subscription_status ?? 'Sem assinatura'}
+            </span>
+            {user.plan === 'PRO' && !['ACTIVE', 'TRIAL'].includes(user.subscription_status ?? '') && (
+              <p className="text-xs text-amber-600 mt-1">
+                ⚠ Plano Premium no banco mas sem assinatura ativa — app exibe Gratuito
+              </p>
+            )}
           </div>
           <div>
             <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-1">Status</p>
