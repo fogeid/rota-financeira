@@ -599,3 +599,46 @@ model InfluencerApplication {
 
   @@map("influencer_applications")
 }
+
+// ─────────────────────────────────────────
+// ADMINISTRAÇÃO
+// ─────────────────────────────────────────
+
+enum AdminRole {
+  SUPER_ADMIN
+  SUPPORT_DRIVER
+  SUPPORT_INFLUENCER
+  SUPPORT_DRIVER_INFLUENCER
+}
+
+model AdminUser {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  password_hash String
+  role          AdminRole @default(SUPPORT_DRIVER)
+  is_active     Boolean   @default(true)
+  last_login_at DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  audit_logs    AdminAuditLog[]
+
+  @@map("admin_users")
+}
+
+model AdminAuditLog {
+  id          String    @id @default(uuid())
+  admin_id    String
+  action      String    @db.VarChar(100)
+  target_type String    @db.VarChar(50)
+  target_id   String
+  details     Json?
+  created_at  DateTime  @default(now())
+
+  admin       AdminUser @relation(fields: [admin_id], references: [id])
+
+  @@index([admin_id, created_at])
+  @@index([target_type, target_id])
+  @@map("admin_audit_logs")
+}
