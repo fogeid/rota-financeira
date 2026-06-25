@@ -26,7 +26,7 @@ class RejectSuspendDto {
 
 class UpdateTierDto {
   @IsEnum(InfluencerTier)
-  tier: InfluencerTier;
+  tier!: InfluencerTier;
 }
 
 @Public()
