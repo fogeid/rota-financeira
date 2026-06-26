@@ -28,10 +28,10 @@ export class CostsService {
         ...(dto.type === CostType.FUEL && {
           fuel_log: {
             create: {
-              gas_station: dto.gas_station ?? dto.description ?? 'Não informado',
-              liters: dto.liters ?? 0,
-              price_per_liter: dto.price_per_liter ?? 0,
-              odometer_km: dto.odometer_km ?? 0,
+              gas_station: dto.fuel_log?.gas_station ?? dto.gas_station ?? dto.description ?? 'Não informado',
+              liters: dto.fuel_log?.liters ?? dto.liters ?? 0,
+              price_per_liter: dto.fuel_log?.price_per_liter ?? dto.price_per_liter ?? 0,
+              odometer_km: dto.fuel_log?.odometer_km ?? dto.odometer_km ?? 0,
             },
           },
         }),

@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CostType } from '@prisma/client';
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
@@ -10,7 +11,34 @@ import {
   IsString,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
+
+export class CreateFuelLogDto {
+  @ApiPropertyOptional({ example: 'Posto Ipiranga Centro' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  gas_station?: string;
+
+  @ApiPropertyOptional({ example: 40.5 })
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  liters?: number;
+
+  @ApiPropertyOptional({ example: 5.89 })
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  price_per_liter?: number;
+
+  @ApiPropertyOptional({ example: 54320 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  odometer_km?: number;
+}
 
 export class CreateCostDto {
   @ApiProperty({ enum: CostType, example: 'FUEL' })
@@ -32,7 +60,14 @@ export class CreateCostDto {
   @IsDateString()
   cost_date!: string;
 
-  // ── FuelLog (opcionais — backend usa defaults se ausentes) ──
+  // ── FuelLog aninhado (formato documentado em docs/04-API-SPEC.md) ──
+  @ApiPropertyOptional({ type: () => CreateFuelLogDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateFuelLogDto)
+  fuel_log?: CreateFuelLogDto;
+
+  // ── FuelLog flat (legado — mantido para compatibilidade) ──
   @ApiPropertyOptional({ example: 'Posto Ipiranga Centro' })
   @IsOptional()
   @IsString()

@@ -210,7 +210,7 @@ export class AdminService {
 
     const before = { name: user.name };
 
-    return this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       const data: Record<string, unknown> = {};
       if (dto.name) data.name = dto.name;
       if (dto.email) {
@@ -242,13 +242,14 @@ export class AdminService {
         await tx.vehicle.update({ where: { user_id: userId }, data: dto.vehicle });
       }
 
-      const result = await this.getUserById(userId);
       await this.auditService.log(adminId, 'update_user', 'User', userId, {
         before: { name: before.name },
         after: { name: dto.name ?? before.name, fields_updated: Object.keys(dto).filter((k) => k !== 'vehicle') },
       });
-      return result;
     });
+
+    // Busca APÓS commit da transação para retornar o estado já atualizado
+    return this.getUserById(userId);
   }
 
   async grantPremium(userId: string, adminId: string) {
