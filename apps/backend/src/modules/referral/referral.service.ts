@@ -65,20 +65,17 @@ export class ReferralService {
   }
 
   /**
-   * Processa indicação quando novo usuário se cadastra com referral_code.
-   * Retorna o número de dias de trial a aplicar (7 para USER, 14 para INFLUENCER).
-   * Retorna null se código inválido (sem efeito).
+   * Cria o registro de Referral quando novo usuário se cadastra com referral_code.
+   * O trial já foi calculado em auth.service.ts via resolveTrialDays().
+   * Não faz nada se o código for inativo ou inválido.
    */
-  async processReferralOnRegister(
-    newUserId: string,
-    referralCode: string,
-  ): Promise<{ trialDays: number } | null> {
+  async processReferralOnRegister(newUserId: string, referralCode: string): Promise<void> {
     const code = await this.prisma.referralCode.findFirst({
       where: { code: referralCode, is_active: true },
     });
 
-    if (!code) return null;
-    if (code.user_id === newUserId) return null; // invariante: auto-indicação proibida
+    if (!code) return;
+    if (code.user_id === newUserId) return; // invariante: auto-indicação proibida
 
     await this.prisma.$transaction([
       this.prisma.referral.create({
@@ -93,8 +90,6 @@ export class ReferralService {
         data: { clicks: { increment: 1 } },
       }),
     ]);
-
-    return { trialDays: code.type === ReferralType.USER ? 7 : 14 };
   }
 
   /**

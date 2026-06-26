@@ -17,6 +17,7 @@ describe('AuthService', () => {
 
   let prisma: {
     user: { findFirst: jest.Mock; findUnique: jest.Mock; create: jest.Mock; update: jest.Mock };
+    referralCode: { findFirst: jest.Mock };
     loginAttempt: { create: jest.Mock };
   };
   let encryption: { hash: jest.Mock; encrypt: jest.Mock };
@@ -52,6 +53,7 @@ describe('AuthService', () => {
         create: jest.fn(),
         update: jest.fn(),
       },
+      referralCode: { findFirst: jest.fn().mockResolvedValue(null) },
       loginAttempt: { create: jest.fn().mockResolvedValue({}) },
     };
 
@@ -245,26 +247,80 @@ describe('AuthService', () => {
       await expect(service.verifyOtp(dto)).rejects.toThrow('Cadastro expirado. Inicie o cadastro novamente.');
     });
 
+    const pendingBase = {
+      name: 'Carlos Souza',
+      cpf: 'enc(11144477735)',
+      cpf_hash: 'hash(11144477735)',
+      email: 'enc(carlos@email.com)',
+      email_hash: 'hash(carlos@email.com)',
+      phone: 'enc(+5511999998888)',
+      phone_hash: 'hash(+5511999998888)',
+      password_hash: 'bcrypt-hash',
+    };
+
     it('cria o usuário e emite tokens quando o OTP é válido', async () => {
       otpService.verify.mockResolvedValue({ success: true, otp: { id: 'otp-1' } });
-      pendingRegistration.get.mockResolvedValue({
-        name: 'Carlos Souza',
-        cpf: 'enc(11144477735)',
-        cpf_hash: 'hash(11144477735)',
-        email: 'enc(carlos@email.com)',
-        email_hash: 'hash(carlos@email.com)',
-        phone: 'enc(+5511999998888)',
-        phone_hash: 'hash(+5511999998888)',
-        password_hash: 'bcrypt-hash',
-      });
+      pendingRegistration.get.mockResolvedValue(pendingBase);
       prisma.user.create.mockResolvedValue({ ...baseUser });
 
+      const before = Date.now();
       const result = await service.verifyOtp(dto);
+      const after = Date.now();
 
       expect(otpService.markUsed).toHaveBeenCalledWith('otp-1');
       expect(pendingRegistration.delete).toHaveBeenCalledWith('hash(+5511999998888)');
       expect(result.access_token).toBe('access');
-      expect(result.user).toEqual({ id: 'user-1', name: 'Carlos Souza', plan: Plan.FREE, trial_ends_at: null });
+      // Sem código → 7 dias de trial
+      const expectedMin = new Date(before + 7 * 24 * 60 * 60 * 1000);
+      const expectedMax = new Date(after + 7 * 24 * 60 * 60 * 1000);
+      const actual = result.user.trial_ends_at as Date;
+      expect(actual.getTime()).toBeGreaterThanOrEqual(expectedMin.getTime());
+      expect(actual.getTime()).toBeLessThanOrEqual(expectedMax.getTime());
+    });
+
+    it('aplica 7 dias de trial para código de motorista (type=USER)', async () => {
+      otpService.verify.mockResolvedValue({ success: true, otp: { id: 'otp-1' } });
+      pendingRegistration.get.mockResolvedValue({ ...pendingBase, referral_code: 'MOTO123' });
+      prisma.referralCode.findFirst.mockResolvedValue({ type: 'USER' });
+      prisma.user.create.mockResolvedValue({ ...baseUser });
+
+      const before = Date.now();
+      const result = await service.verifyOtp(dto);
+      const after = Date.now();
+
+      const expected7 = before + 7 * 24 * 60 * 60 * 1000;
+      expect((result.user.trial_ends_at as Date).getTime()).toBeGreaterThanOrEqual(expected7 - 100);
+      expect((result.user.trial_ends_at as Date).getTime()).toBeLessThanOrEqual(after + 7 * 24 * 60 * 60 * 1000);
+    });
+
+    it('aplica 10 dias de trial para código de influencer (type=INFLUENCER)', async () => {
+      otpService.verify.mockResolvedValue({ success: true, otp: { id: 'otp-1' } });
+      pendingRegistration.get.mockResolvedValue({ ...pendingBase, referral_code: 'INFL456' });
+      prisma.referralCode.findFirst.mockResolvedValue({ type: 'INFLUENCER' });
+      prisma.user.create.mockResolvedValue({ ...baseUser });
+
+      const before = Date.now();
+      const result = await service.verifyOtp(dto);
+      const after = Date.now();
+
+      const expected10 = before + 10 * 24 * 60 * 60 * 1000;
+      expect((result.user.trial_ends_at as Date).getTime()).toBeGreaterThanOrEqual(expected10 - 100);
+      expect((result.user.trial_ends_at as Date).getTime()).toBeLessThanOrEqual(after + 10 * 24 * 60 * 60 * 1000);
+    });
+
+    it('aplica 7 dias de trial quando o código informado não é encontrado/inativo', async () => {
+      otpService.verify.mockResolvedValue({ success: true, otp: { id: 'otp-1' } });
+      pendingRegistration.get.mockResolvedValue({ ...pendingBase, referral_code: 'INVALIDO' });
+      prisma.referralCode.findFirst.mockResolvedValue(null); // código inativo ou inexistente
+      prisma.user.create.mockResolvedValue({ ...baseUser });
+
+      const before = Date.now();
+      const result = await service.verifyOtp(dto);
+      const after = Date.now();
+
+      const expected7 = before + 7 * 24 * 60 * 60 * 1000;
+      expect((result.user.trial_ends_at as Date).getTime()).toBeGreaterThanOrEqual(expected7 - 100);
+      expect((result.user.trial_ends_at as Date).getTime()).toBeLessThanOrEqual(after + 7 * 24 * 60 * 60 * 1000);
     });
   });
 

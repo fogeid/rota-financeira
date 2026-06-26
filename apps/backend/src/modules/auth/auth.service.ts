@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
-import { OtpPurpose, Plan } from '@prisma/client';
+import { OtpPurpose, Plan, ReferralType } from '@prisma/client';
 import { ReferralService } from '../referral/referral.service';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -101,8 +101,9 @@ export class AuthService {
 
     await this.otpService.markUsed(result.otp.id);
 
-    // Trial padrão: 14 dias para todos os novos usuários (ajustado abaixo se veio de indicação USER)
-    const defaultTrialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    // Determina o trial ANTES de criar o usuário para garantir consistência na resposta
+    const trialDays = await this.resolveTrialDays(pending.referral_code);
+    const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
 
     const user = await this.prisma.user.create({
       data: {
@@ -114,23 +115,16 @@ export class AuthService {
         phone: pending.phone,
         phone_hash: pending.phone_hash,
         password_hash: pending.password_hash,
-        trial_ends_at: defaultTrialEndsAt,
+        trial_ends_at: trialEndsAt,
       },
     });
 
     // Inicializa saldo e código de indicação do novo usuário
     await this.referralService.initForNewUser(user.id, user.name);
 
-    // Processa indicação recebida (se informou código)
+    // Cria o registro de Referral se veio com código (o trial já foi aplicado acima)
     if (pending.referral_code) {
-      const result = await this.referralService.processReferralOnRegister(user.id, pending.referral_code);
-      if (result && result.trialDays !== 14) {
-        // Código de motorista USER dá apenas 7 dias (default já era 14 para influencer/sem código)
-        await this.prisma.user.update({
-          where: { id: user.id },
-          data: { trial_ends_at: new Date(Date.now() + result.trialDays * 24 * 60 * 60 * 1000) },
-        });
-      }
+      await this.referralService.processReferralOnRegister(user.id, pending.referral_code);
     }
 
     await this.pendingRegistration.delete(phoneHash);
@@ -139,7 +133,7 @@ export class AuthService {
 
     return {
       ...tokens,
-      user: { id: user.id, name: user.name, plan: user.plan, trial_ends_at: user.trial_ends_at },
+      user: { id: user.id, name: user.name, plan: user.plan, trial_ends_at: trialEndsAt },
     };
   }
 
@@ -257,6 +251,23 @@ export class AuthService {
     await this.tokenService.revokeAllUserTokens(user.id);
 
     return { message: 'Senha alterada com sucesso' };
+  }
+
+  /**
+   * Resolve quantos dias de trial o novo usuário recebe.
+   * docs/06-BUSINESS-RULES.md seção 16.3:
+   *   - Código INFLUENCER → 10 dias
+   *   - Código USER (motorista) → 7 dias
+   *   - Sem código ou código inativo/inválido → 7 dias (padrão)
+   */
+  private async resolveTrialDays(referralCode?: string): Promise<number> {
+    if (!referralCode) return 7;
+    const code = await this.prisma.referralCode.findFirst({
+      where: { code: referralCode, is_active: true },
+      select: { type: true },
+    });
+    if (!code) return 7;
+    return code.type === ReferralType.INFLUENCER ? 10 : 7;
   }
 
   private accountLockedException(retryAfterSeconds: number): HttpException {
