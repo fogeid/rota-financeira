@@ -1,0 +1,15 @@
+{
+  "name": "rota-financeira",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently --names \"api,app\" --prefix-colors \"cyan,magenta\" \"npm run dev:api\" \"npm run dev:app\"",
+    "dev:api": "npm --prefix apps/backend run start:dev",
+    "dev:app": "npm --prefix apps/mobile run start",
+    "build:api": "npm --prefix apps/backend run build",
+    "test:api": "npm --prefix apps/backend run test"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3",
+    "playwright": "^1.61.0"
+  }
+}
