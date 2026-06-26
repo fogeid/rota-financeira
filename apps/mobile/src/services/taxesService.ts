@@ -4,7 +4,7 @@ import type { TaxMonth, TaxAnnual } from '../types/api';
 export const taxesService = {
   async monthly(month?: string): Promise<TaxMonth> {
     const m = month ?? new Date().toISOString().slice(0, 7);
-    const { data } = await api.get<TaxMonth>(`/taxes/monthly/${m}`);
+    const { data } = await api.get<TaxMonth>('/taxes/monthly', { params: { month: m } });
     return data;
   },
 

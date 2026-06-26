@@ -116,7 +116,7 @@ export class TaxesService {
       where: { user_id_month: { user_id: userId, month: start } },
     });
     if (!existing) {
-      throw new NotFoundException(`Registro de imposto não encontrado para ${month}. Acesse GET /taxes/monthly/${month} primeiro.`);
+      throw new NotFoundException(`Registro de imposto não encontrado para ${month}. Acesse GET /taxes/monthly?month=${month} primeiro.`);
     }
 
     const paid_at = dto.status === TaxStatus.PAID ? new Date() : null;
