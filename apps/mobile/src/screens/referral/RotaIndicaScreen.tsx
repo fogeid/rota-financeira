@@ -242,7 +242,7 @@ export function RotaIndicaScreen() {
           />
         )}
         <Text style={styles.codeText}>{data.code}</Text>
-        <Text style={styles.linkText} numberOfLines={1}>{data.link}</Text>
+        {data.link ? <Text style={styles.linkText} numberOfLines={1}>{data.link}</Text> : null}
         {data.is_active !== false && (
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
             <TouchableOpacity style={styles.codeBtn} onPress={handleCopyCode} activeOpacity={0.8}>

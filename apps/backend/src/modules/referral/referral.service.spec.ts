@@ -249,24 +249,26 @@ describe('ReferralService', () => {
   // ── deactivateMotoristCodeForInfluencer / reactivate ───────────────────────
 
   describe('deactivateMotoristCodeForInfluencer', () => {
-    it('desativa todos os códigos USER do usuário', async () => {
+    it('desativa todos os códigos USER do usuário e invalida o cache', async () => {
       mockPrisma.referralCode.updateMany.mockResolvedValue({ count: 1 });
       await service.deactivateMotoristCodeForInfluencer('user-1');
       expect(mockPrisma.referralCode.updateMany).toHaveBeenCalledWith({
         where: { user_id: 'user-1', type: 'USER' },
         data: { is_active: false },
       });
+      expect(mockCache.del).toHaveBeenCalledWith('referral:me:user-1');
     });
   });
 
   describe('reactivateMotoristCodeAfterInfluencerRemoval', () => {
-    it('reativa todos os códigos USER do usuário', async () => {
+    it('reativa todos os códigos USER do usuário e invalida o cache', async () => {
       mockPrisma.referralCode.updateMany.mockResolvedValue({ count: 1 });
       await service.reactivateMotoristCodeAfterInfluencerRemoval('user-1');
       expect(mockPrisma.referralCode.updateMany).toHaveBeenCalledWith({
         where: { user_id: 'user-1', type: 'USER' },
         data: { is_active: true },
       });
+      expect(mockCache.del).toHaveBeenCalledWith('referral:me:user-1');
     });
   });
 
@@ -329,7 +331,7 @@ describe('ReferralService', () => {
 
     it('retorna dados completos quando código existe', async () => {
       mockCache.get.mockResolvedValueOnce(null);
-      mockPrisma.referralCode.findUnique.mockResolvedValueOnce({ user_id: 'user-1', code: 'CARLO33' });
+      mockPrisma.referralCode.findUnique.mockResolvedValueOnce({ user_id: 'user-1', code: 'CARLO33', is_active: true });
       mockPrisma.referralBalance.findUnique.mockResolvedValueOnce({
         user_id: 'user-1', conversions: 0, available: 10, pending: 0, total_earned: 10, total_withdrawn: 0,
       });
@@ -338,8 +340,24 @@ describe('ReferralService', () => {
       const result = await service.getMyReferral('user-1') as Record<string, unknown>;
 
       expect(result.code).toBe('CARLO33');
+      expect(result.is_active).toBe(true);
+      expect(result.link).toBe('https://rotafinanceira.app/i/CARLO33');
       expect(result.level).toBe('INICIANTE');
       expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('retorna is_active=false e link=null quando código está desativado', async () => {
+      mockCache.get.mockResolvedValueOnce(null);
+      mockPrisma.referralCode.findUnique.mockResolvedValueOnce({ user_id: 'user-1', code: 'CARLO33', is_active: false });
+      mockPrisma.referralBalance.findUnique.mockResolvedValueOnce({
+        user_id: 'user-1', conversions: 5, available: 30, pending: 0, total_earned: 30, total_withdrawn: 0,
+      });
+      mockPrisma.referral.findMany.mockResolvedValueOnce([]);
+
+      const result = await service.getMyReferral('user-1') as Record<string, unknown>;
+
+      expect(result.is_active).toBe(false);
+      expect(result.link).toBeNull();
     });
   });
 

@@ -252,7 +252,7 @@ export class ReferralService {
     const result = {
       code: code!.code,
       is_active: code!.is_active,
-      link: `https://rotafinanceira.app/i/${code!.code}`,
+      link: code!.is_active ? `https://rotafinanceira.app/i/${code!.code}` : null,
       level: getReferralLevel(conversions),
       conversions,
       next_level_at: getNextLevelAt(conversions),
@@ -278,6 +278,7 @@ export class ReferralService {
       where: { user_id: userId, type: 'USER' },
       data: { is_active: false },
     });
+    await this.cache.del(referralCacheKey(userId));
     this.logger.log(`[REFERRAL] Código de motorista desativado para usuário ${userId} (aprovado como influencer)`);
   }
 
@@ -286,6 +287,7 @@ export class ReferralService {
       where: { user_id: userId, type: 'USER' },
       data: { is_active: true },
     });
+    await this.cache.del(referralCacheKey(userId));
     this.logger.log(`[REFERRAL] Código de motorista reativado para usuário ${userId} (influencer removido/suspenso)`);
   }
 
