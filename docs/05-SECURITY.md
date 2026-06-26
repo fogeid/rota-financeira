@@ -84,7 +84,7 @@ function encryptCredentials(credentials: object, userId: string): string {
 ```
 Access Token:
 - Algoritmo: HS256
-- Payload: { sub: userId, plan: 'PRO', iat, exp }
+- Payload: { sub: userId, plan: 'PREMIUM', iat, exp }
 - Expiração: 15 minutos
 - Armazenamento client: Expo SecureStore (keychain nativa)
 
@@ -264,6 +264,34 @@ Dados de pagamento:        5 anos (obrigação fiscal)
 6. Histórico de pagamentos anonimizado (valor mantido para fins fiscais)
 7. E-mail de confirmação enviado ao usuário
 ```
+
+### Desativação de Conta via Painel Admin — Fluxo
+
+```
+1. Admin (SUPER_ADMIN, SUPPORT_DRIVER ou SUPPORT_DRIVER_INFLUENCER)
+   aciona "Desativar conta" em /admin/usuarios/:id
+2. Conta marcada como is_active = false (campo próprio, distinto de
+   deleted_at — desativação por admin NÃO inicia o job de exclusão
+   em 30 dias; é reversível a qualquer momento via "Reativar conta")
+3. TODOS os refresh_tokens deste usuário são revogados IMEDIATAMENTE
+   (mesma ação que ocorre no logout, aplicada a TODAS as sessões
+   ativas do usuário, não apenas à sessão atual)
+4. POST /auth/login e POST /auth/refresh DEVEM verificar is_active
+   ANTES de emitir qualquer novo token — usuário desativado nunca
+   consegue logar novamente nem renovar uma sessão existente
+5. AdminAuditLog registra a ação (admin, timestamp, user_id afetado)
+6. Reativação (is_active = true) permite login normalmente de novo,
+   sem necessidade de o usuário redefinir senha ou qualquer fricção
+   extra
+```
+
+INVARIANTE DE SEGURANÇA (NUNCA violar): nenhum endpoint autenticado
+deve responder normalmente para um usuário com is_active = false.
+A verificação de is_active deve ocorrer no Guard de autenticação
+do app (JwtAuthGuard), não apenas no login — um access_token emitido
+ANTES da desativação tem validade de até 15 minutos e deve parar de
+funcionar assim que o guard checar is_active na próxima requisição,
+não apenas no próximo login.
 
 ---
 

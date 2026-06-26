@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseIntPipe, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Query, Res, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -14,9 +14,15 @@ export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @Get('monthly')
-  @ApiOperation({ summary: 'Relatório do mês atual' })
-  getMonthlyDefault(@CurrentUser() user: AuthenticatedUser) {
-    return this.reportsService.getMonthlyReport(user.sub, this.reportsService.currentMonth());
+  @ApiOperation({ summary: 'Relatório mensal (mês atual por padrão, ou ?month=YYYY-MM)' })
+  getMonthlyDefault(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('month') month?: string,
+  ) {
+    return this.reportsService.getMonthlyReport(
+      user.sub,
+      month ?? this.reportsService.currentMonth(),
+    );
   }
 
   @Get('monthly/:month')

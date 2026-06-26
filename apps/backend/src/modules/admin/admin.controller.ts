@@ -6,12 +6,15 @@ import {
   HttpStatus,
   Param,
   Patch,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import { AdminRole, InfluencerStatus, InfluencerTier, WithdrawalStatus } from '@prisma/client';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { Public } from '../../common/decorators/public.decorator';
+import { UpdateUserAdminDto } from './dto/update-user-admin.dto';
+import { MakeInfluencerAdminDto } from './dto/make-influencer-admin.dto';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
 import { AdminRolesGuard } from './guards/admin-roles.guard';
 import { AdminRoles } from './decorators/admin-roles.decorator';
@@ -73,6 +76,42 @@ export class AdminController {
   @AdminRoles(AdminRole.SUPER_ADMIN, AdminRole.SUPPORT_DRIVER, AdminRole.SUPPORT_DRIVER_INFLUENCER)
   reactivateUser(@Param('id') id: string, @CurrentAdmin() admin: CurrentAdminUser) {
     return this.adminService.reactivateUser(id, admin.id);
+  }
+
+  @Patch('users/:id')
+  @HttpCode(HttpStatus.OK)
+  @AdminRoles(AdminRole.SUPER_ADMIN, AdminRole.SUPPORT_DRIVER, AdminRole.SUPPORT_DRIVER_INFLUENCER)
+  updateUser(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserAdminDto,
+    @CurrentAdmin() admin: CurrentAdminUser,
+  ) {
+    return this.adminService.updateUser(id, dto, admin.id);
+  }
+
+  @Patch('users/:id/grant-premium')
+  @HttpCode(HttpStatus.OK)
+  @AdminRoles(AdminRole.SUPER_ADMIN, AdminRole.SUPPORT_DRIVER, AdminRole.SUPPORT_DRIVER_INFLUENCER)
+  grantPremium(@Param('id') id: string, @CurrentAdmin() admin: CurrentAdminUser) {
+    return this.adminService.grantPremium(id, admin.id);
+  }
+
+  @Patch('users/:id/revoke-premium')
+  @HttpCode(HttpStatus.OK)
+  @AdminRoles(AdminRole.SUPER_ADMIN, AdminRole.SUPPORT_DRIVER, AdminRole.SUPPORT_DRIVER_INFLUENCER)
+  revokePremium(@Param('id') id: string, @CurrentAdmin() admin: CurrentAdminUser) {
+    return this.adminService.revokePremium(id, admin.id);
+  }
+
+  @Post('users/:id/make-influencer')
+  @HttpCode(HttpStatus.CREATED)
+  @AdminRoles(AdminRole.SUPER_ADMIN, AdminRole.SUPPORT_INFLUENCER, AdminRole.SUPPORT_DRIVER_INFLUENCER)
+  makeInfluencer(
+    @Param('id') id: string,
+    @Body() dto: MakeInfluencerAdminDto,
+    @CurrentAdmin() admin: CurrentAdminUser,
+  ) {
+    return this.adminService.makeInfluencer(id, dto, admin.id);
   }
 
   // ── Influencers ───────────────────────────────────────────────────────────

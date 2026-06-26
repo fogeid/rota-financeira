@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/types/authenticated-user';
@@ -11,10 +11,13 @@ import { TaxesService } from './taxes.service';
 export class TaxesController {
   constructor(private readonly taxesService: TaxesService) {}
 
-  @Get('monthly/:month')
-  @ApiOperation({ summary: 'Calcula IR do mês (Carnê-Leão 2026), ex: 2026-06' })
-  getMonthlyTax(@CurrentUser() user: AuthenticatedUser, @Param('month') month: string) {
-    return this.taxesService.getMonthlyTax(user.sub, month);
+  @Get('monthly')
+  @ApiOperation({ summary: 'Calcula IR do mês (Carnê-Leão 2026), ex: ?month=2026-06' })
+  getMonthlyTax(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('month') month?: string,
+  ) {
+    return this.taxesService.getMonthlyTax(user.sub, month ?? new Date().toISOString().slice(0, 7));
   }
 
   @Get('annual/:year')
