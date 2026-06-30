@@ -71,7 +71,9 @@ export interface AdminUser {
 export interface AdminUserDetail extends AdminUser {
   trial_ends_at: string | null;
   plan_expires_at: string | null;
+  plan_granted_by: string | null;
   subscription_status: string | null;
+  influencer_profile_id?: string | null;
   current_month_summary: { earnings: number; costs: number };
 }
 
@@ -104,6 +106,42 @@ export async function deactivateUser(id: string): Promise<{ message: string }> {
 
 export async function reactivateUser(id: string): Promise<{ message: string }> {
   const { data } = await adminApi.patch<{ message: string }>(`/users/${id}/reactivate`);
+  return data;
+}
+
+export interface UpdateUserAdminPayload {
+  name?: string;
+  email?: string;
+  phone?: string;
+  cpf?: string;
+  vehicle?: { model?: string; year?: number; plate?: string; fuel_efficiency?: number };
+}
+
+export async function updateUser(id: string, payload: UpdateUserAdminPayload): Promise<AdminUserDetail> {
+  const { data } = await adminApi.patch<AdminUserDetail>(`/users/${id}`, payload);
+  return data;
+}
+
+export async function grantPremium(id: string): Promise<{ message: string }> {
+  const { data } = await adminApi.patch<{ message: string }>(`/users/${id}/grant-premium`);
+  return data;
+}
+
+export async function revokePremium(id: string): Promise<{ message: string }> {
+  const { data } = await adminApi.patch<{ message: string }>(`/users/${id}/revoke-premium`);
+  return data;
+}
+
+export interface MakeInfluencerPayload {
+  channel_name: string;
+  channel_url: string;
+  followers: number;
+  niche: string;
+  tier: InfluencerTier;
+}
+
+export async function makeInfluencer(userId: string, payload: MakeInfluencerPayload): Promise<{ id: string }> {
+  const { data } = await adminApi.post<{ id: string }>(`/users/${userId}/make-influencer`, payload);
   return data;
 }
 

@@ -6,7 +6,7 @@ import {
   LoggerService,
   NotFoundException,
 } from '@nestjs/common';
-import { InfluencerStatus, WithdrawalStatus } from '@prisma/client';
+import { InfluencerStatus, InfluencerTier, WithdrawalStatus } from '@prisma/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -15,7 +15,7 @@ import { EncryptionService } from '../../common/services/encryption.service';
 import { ReferralService } from '../referral/referral.service';
 import { ApplyInfluencerDto } from './dto/apply-influencer.dto';
 import { UpdatePixKeyDto } from './dto/update-pix-key.dto';
-import { getTierByFollowers } from './influencer.constants';
+import { getDefaultCommissionRate, getTierByFollowers } from './influencer.constants';
 
 @Injectable()
 export class InfluencerService {
@@ -213,6 +213,30 @@ export class InfluencerService {
     });
 
     await this.referralService.deactivateMotoristCodeForInfluencer(profile.user_id);
+  }
+
+  async findProfileByUserId(userId: string) {
+    return this.prisma.influencerProfile.findUnique({ where: { user_id: userId } });
+  }
+
+  async createApprovedProfileDirectly(
+    userId: string,
+    data: { channel_name: string; channel_url: string; followers: number; niche: string; tier: InfluencerTier },
+  ) {
+    const commissionRate = getDefaultCommissionRate(data.tier);
+    return this.prisma.influencerProfile.create({
+      data: {
+        user_id: userId,
+        channel_name: data.channel_name,
+        channel_url: data.channel_url,
+        followers: data.followers,
+        niche: data.niche,
+        tier: data.tier,
+        commission_rate: commissionRate,
+        status: InfluencerStatus.APPROVED,
+        approved_at: new Date(),
+      },
+    });
   }
 
   /** PATCH /admin/influencer/:id/suspend — suspende ou rejeita influencer e reativa código de motorista. */

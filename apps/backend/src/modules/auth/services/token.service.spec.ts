@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Plan } from '@prisma/client';
@@ -70,7 +71,7 @@ describe('TokenService', () => {
         user_id: 'user-1',
         revoked_at: new Date(),
         expires_at: new Date(Date.now() + 60_000),
-        user: { plan: Plan.FREE },
+        user: { plan: Plan.FREE, is_active: true },
       });
 
       const result = await service.rotateRefreshToken('token-revogado');
@@ -84,12 +85,25 @@ describe('TokenService', () => {
         user_id: 'user-1',
         revoked_at: null,
         expires_at: new Date(Date.now() - 1000),
-        user: { plan: Plan.FREE },
+        user: { plan: Plan.FREE, is_active: true },
       });
 
       const result = await service.rotateRefreshToken('token-expirado');
 
       expect(result).toBeNull();
+    });
+
+    it('lança ForbiddenException quando o refresh token pertence a usuário desativado', async () => {
+      prisma.refreshToken.findUnique.mockResolvedValue({
+        id: 'rt-1',
+        user_id: 'user-1',
+        revoked_at: null,
+        expires_at: new Date(Date.now() + 60_000),
+        user: { plan: Plan.FREE, is_active: false },
+      });
+
+      await expect(service.rotateRefreshToken('token-valido')).rejects.toThrow(ForbiddenException);
+      expect(prisma.refreshToken.update).not.toHaveBeenCalled();
     });
 
     it('revoga o token atual e emite um novo par quando o token é válido', async () => {
@@ -98,7 +112,7 @@ describe('TokenService', () => {
         user_id: 'user-1',
         revoked_at: null,
         expires_at: new Date(Date.now() + 60_000),
-        user: { plan: Plan.PRO },
+        user: { plan: Plan.PRO, is_active: true },
       });
 
       const tokens = await service.rotateRefreshToken('token-valido');

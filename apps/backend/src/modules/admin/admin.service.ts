@@ -1,11 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AdminRole, InfluencerStatus, InfluencerTier, Plan, WithdrawalStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EncryptionService } from '../../common/services/encryption.service';
+import { cleanCpf } from '../../common/validators/cpf.validator';
 import { maskCpf, maskEmail, maskPhone } from '../../common/utils/mask.util';
 import { InfluencerService } from '../influencer/influencer.service';
 import { getDefaultCommissionRate } from '../influencer/influencer.constants';
+import { ReferralService } from '../referral/referral.service';
 import { AdminAuditService } from './admin-audit.service';
+import { UpdateUserAdminDto } from './dto/update-user-admin.dto';
+import { MakeInfluencerAdminDto } from './dto/make-influencer-admin.dto';
 
 @Injectable()
 export class AdminService {
@@ -13,6 +17,7 @@ export class AdminService {
     private readonly prisma: PrismaService,
     private readonly encryption: EncryptionService,
     private readonly influencerService: InfluencerService,
+    private readonly referralService: ReferralService,
     private readonly auditService: AdminAuditService,
   ) {}
 
@@ -162,6 +167,7 @@ export class AdminService {
       email_masked: maskEmail(this.encryption.decrypt(user.email)),
       phone_masked: maskPhone(this.encryption.decrypt(user.phone)),
       plan: user.plan,
+      plan_granted_by: user.plan_granted_by,
       subscription_status: latestSubscription?.status ?? null,
       is_active: user.is_active,
       created_at: user.created_at,
@@ -179,6 +185,10 @@ export class AdminService {
     if (!user) throw new NotFoundException('Usuário não encontrado');
 
     await this.prisma.user.update({ where: { id: userId }, data: { is_active: false } });
+    await this.prisma.refreshToken.updateMany({
+      where: { user_id: userId, revoked_at: null },
+      data: { revoked_at: new Date() },
+    });
     await this.auditService.log(adminId, 'deactivate_user', 'User', userId);
 
     return { message: 'Usuário desativado' };
@@ -192,6 +202,99 @@ export class AdminService {
     await this.auditService.log(adminId, 'reactivate_user', 'User', userId);
 
     return { message: 'Usuário reativado' };
+  }
+
+  async updateUser(userId: string, dto: UpdateUserAdminDto, adminId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId, deleted_at: null } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    const before = { name: user.name };
+
+    return this.prisma.$transaction(async (tx) => {
+      const data: Record<string, unknown> = {};
+      if (dto.name) data.name = dto.name;
+      if (dto.email) {
+        data.email = this.encryption.encrypt(dto.email);
+        data.email_hash = this.encryption.hash(dto.email.toLowerCase());
+      }
+      if (dto.phone) {
+        data.phone = this.encryption.encrypt(dto.phone);
+        data.phone_hash = this.encryption.hash(dto.phone);
+      }
+      if (dto.cpf) {
+        const cpfDigits = cleanCpf(dto.cpf);
+        data.cpf = this.encryption.encrypt(cpfDigits);
+        data.cpf_hash = this.encryption.hash(cpfDigits);
+      }
+
+      if (Object.keys(data).length > 0) {
+        try {
+          await tx.user.update({ where: { id: userId }, data });
+        } catch (err: unknown) {
+          if ((err as { code?: string }).code === 'P2002') {
+            throw new BadRequestException('Este e-mail ou CPF já está em uso por outra conta.');
+          }
+          throw err;
+        }
+      }
+
+      if (dto.vehicle) {
+        await tx.vehicle.update({ where: { user_id: userId }, data: dto.vehicle });
+      }
+
+      const result = await this.getUserById(userId);
+      await this.auditService.log(adminId, 'update_user', 'User', userId, {
+        before: { name: before.name },
+        after: { name: dto.name ?? before.name, fields_updated: Object.keys(dto).filter((k) => k !== 'vehicle') },
+      });
+      return result;
+    });
+  }
+
+  async grantPremium(userId: string, adminId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId, deleted_at: null } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { plan: Plan.PRO, plan_granted_by: 'ADMIN_COURTESY', plan_expires_at: null },
+    });
+    await this.auditService.log(adminId, 'grant_premium_courtesy', 'User', userId, {});
+
+    return { message: 'Premium concedido por cortesia' };
+  }
+
+  async revokePremium(userId: string, adminId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId, deleted_at: null } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    if (user.plan_granted_by !== 'ADMIN_COURTESY') {
+      throw new BadRequestException(
+        'Este usuário tem uma assinatura paga ativa — não é uma cortesia administrativa. Use o cancelamento normal de assinatura, não esta ação.',
+      );
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { plan: Plan.FREE, plan_granted_by: null },
+    });
+    await this.auditService.log(adminId, 'revoke_premium_courtesy', 'User', userId, {});
+
+    return { message: 'Premium de cortesia removido' };
+  }
+
+  async makeInfluencer(userId: string, dto: MakeInfluencerAdminDto, adminId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId, deleted_at: null } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    const existing = await this.influencerService.findProfileByUserId(userId);
+    if (existing) throw new BadRequestException('Este usuário já possui um perfil de influencer.');
+
+    const profile = await this.influencerService.createApprovedProfileDirectly(userId, dto);
+    await this.referralService.deactivateMotoristCodeForInfluencer(userId);
+    await this.auditService.log(adminId, 'make_influencer_direct', 'User', userId, { tier: dto.tier });
+
+    return profile;
   }
 
   // ── Influencers ───────────────────────────────────────────────────────────

@@ -32,6 +32,7 @@ model User {
   phone_hash        String    @unique  // SHA-256 do telefone. Usado para lookup
   password_hash     String             // bcrypt custo 12
   plan              Plan      @default(GRATUITO)
+  plan_granted_by   String?            // 'PAYMENT' | 'ADMIN_COURTESY' | null (gratuito). Nunca confundir cortesia com assinatura paga real
   trial_ends_at     DateTime?          // null após trial expirado
   plan_expires_at   DateTime?          // Para planos pagos
   is_active         Boolean   @default(true)

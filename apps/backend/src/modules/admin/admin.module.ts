@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { InfluencerModule } from '../influencer/influencer.module';
+import { ReferralModule } from '../referral/referral.module';
 import { AdminAuthController } from './admin-auth.controller';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminController } from './admin.controller';
@@ -16,6 +17,7 @@ import { AdminRolesGuard } from './guards/admin-roles.guard';
     PassportModule,
     JwtModule.register({}), // secrets injetados explicitamente nos services (ConfigService)
     InfluencerModule,
+    ReferralModule,
   ],
   controllers: [AdminAuthController, AdminController],
   providers: [
