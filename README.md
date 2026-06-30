@@ -130,6 +130,42 @@ Secrets necessários no EAS (via `eas secret`):
 
 ---
 
+## Fluxo de branches (Git Workflow)
+
+O projeto segue um fluxo de duas branches permanentes:
+
+| Branch | Propósito |
+|--------|-----------|
+| `main` | Produção — sempre estável, protegida contra push direto |
+| `develop` | Integração contínua — base para novas features |
+
+### Regras
+
+- **Nunca** faça push direto em `main` ou `develop`
+- Todo trabalho acontece em branches temporárias criadas a partir de `develop`
+- Use o prefixo adequado para o nome da branch:
+
+| Tipo | Padrão | Exemplo |
+|------|--------|---------|
+| Nova funcionalidade | `feat/<nome>` | `feat/agente-16-git-flow` |
+| Correção de bug | `fix/<nome>` | `fix/login-refresh-token` |
+| Documentação | `docs/<nome>` | `docs/api-spec-update` |
+| Configuração/infra | `chore/<nome>` | `chore/update-dependencies` |
+
+### Ciclo de vida
+
+```
+develop → feat/minha-feature → PR → develop → PR → main
+```
+
+1. Crie sua branch a partir de `develop`
+2. Abra um Pull Request para `develop` quando terminar
+3. Após validação em `develop`, abra PR de `develop` → `main` para release
+
+Para detalhes completos: [`docs/14-GIT-WORKFLOW.md`](docs/14-GIT-WORKFLOW.md)
+
+---
+
 ## Estrutura do repositório
 
 ```
