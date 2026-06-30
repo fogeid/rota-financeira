@@ -50,6 +50,9 @@ import { REDIS_CLIENT, RedisModule } from './redis/redis.module';
           connection: {
             host: redisUrl.hostname,
             port: parseInt(redisUrl.port || '6379', 10),
+            // password e username obrigatórios quando o Redis Railway exige auth (NOAUTH)
+            password: redisUrl.password || undefined,
+            username: redisUrl.username || undefined,
             maxRetriesPerRequest: null,
           },
         };
