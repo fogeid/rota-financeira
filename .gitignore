@@ -13,6 +13,11 @@ out/
 .env
 .env.local
 .env.*.local
+.env.staging
+.env.production
+apps/backend/.env
+apps/mobile/.env
+apps/dashboard/.env.local
 
 # Logs
 *.log
