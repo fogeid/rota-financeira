@@ -50,7 +50,7 @@ export function LoginScreen({ navigation }: Props) {
 
   async function handleBiometry() {
     const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Entrar no Rota Financeira',
+      promptMessage: 'Entrar no Motorista Rico',
       cancelLabel: 'Usar senha',
       disableDeviceFallback: false,
     });

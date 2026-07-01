@@ -7,12 +7,12 @@ async function seedAdmins() {
   const admins = [
     {
       name: 'Diego',
-      email: 'diego@rotafinanceira.app',
+      email: 'diego@motoristarico.app',
       password: 'TROCAR_DEPOIS',
       role: AdminRole.SUPER_ADMIN,
     },
     // Exemplo de suporte futuro (comentado — descomentar ao contratar):
-    // { name: 'Nome Suporte', email: 'suporte@rotafinanceira.app', password: 'TROCAR_DEPOIS', role: AdminRole.SUPPORT_DRIVER_INFLUENCER },
+    // { name: 'Nome Suporte', email: 'suporte@motoristarico.app', password: 'TROCAR_DEPOIS', role: AdminRole.SUPPORT_DRIVER_INFLUENCER },
   ];
 
   for (const admin of admins) {

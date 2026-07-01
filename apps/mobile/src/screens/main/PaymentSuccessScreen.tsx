@@ -36,7 +36,7 @@ export function PaymentSuccessScreen({ route, navigation }: Props) {
 
       <Text style={styles.title}>Assinatura ativada!</Text>
       <Text style={styles.sub}>
-        Bem-vindo ao Rota Financeira Premium. Você agora tem acesso completo a todos os recursos.
+        Bem-vindo ao Motorista Rico Premium. Você agora tem acesso completo a todos os recursos.
       </Text>
 
       <View style={styles.detailCard}>

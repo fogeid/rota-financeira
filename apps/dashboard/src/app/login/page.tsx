@@ -142,13 +142,13 @@ export default function LoginPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-slate-800">Rota Financeira</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Motorista Rico</h1>
           <p className="text-slate-500 mt-1 text-sm">Portal do Influencer</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
           <h2 className="text-lg font-semibold text-slate-800 mb-2">Entrar na sua conta</h2>
-          <p className="text-xs text-slate-500 mb-6">Use o mesmo CPF e senha do seu app Rota Financeira</p>
+          <p className="text-xs text-slate-500 mb-6">Use o mesmo CPF e senha do seu app Motorista Rico</p>
           <Suspense fallback={<div className="h-40 animate-pulse bg-slate-100 rounded-lg" />}>
             <LoginForm />
           </Suspense>

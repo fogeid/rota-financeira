@@ -2,18 +2,18 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'Rota Financeira',
-  slug: 'rota-financeira',
+  name: 'Motorista Rico',
+  slug: 'motorista-rico',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'dark',
   ios: {
     supportsTablet: false,
-    bundleIdentifier: 'app.rotafinanceira.mobile',
+    bundleIdentifier: 'app.motoristarico',
   },
   android: {
-    package: 'app.rotafinanceira.mobile',
+    package: 'app.motoristarico',
     adaptiveIcon: {
       foregroundImage: './assets/android-icon-foreground.png',
       backgroundImage: './assets/android-icon-background.png',

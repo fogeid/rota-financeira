@@ -97,7 +97,7 @@ export class SubscriptionsService {
     // usamos apenas o userId como referência no Pagar.me
     const customer = await this.pagarme.createCustomer({
       name: user.name,
-      email: `user-${userId}@rota-financeira.internal`,
+      email: `user-${userId}@motoristarico.internal`,
       externalId: userId,
     });
 
@@ -170,7 +170,7 @@ export class SubscriptionsService {
 
     const customer = await this.pagarme.createCustomer({
       name: `Motorista ${userId.slice(0, 8)}`,
-      email: `user-${userId}@rota-financeira.internal`,
+      email: `user-${userId}@motoristarico.internal`,
       externalId: userId,
     });
 

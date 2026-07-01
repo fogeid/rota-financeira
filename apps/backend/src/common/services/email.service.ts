@@ -21,7 +21,7 @@ export class EmailService {
     @Inject('LOGGER') private readonly logger: LoggerService,
   ) {
     this.apiKey = config.get<string>('SENDGRID_API_KEY');
-    this.fromEmail = config.get<string>('SENDGRID_FROM_EMAIL', 'noreply@rotafinanceira.app');
+    this.fromEmail = config.get<string>('SENDGRID_FROM_EMAIL', 'noreply@motoristarico.app');
   }
 
   async send({ to, subject, html }: SendEmailParams): Promise<void> {
@@ -38,7 +38,7 @@ export class EmailService {
       },
       body: JSON.stringify({
         personalizations: [{ to: [{ email: to }] }],
-        from: { email: this.fromEmail, name: 'Rota Financeira' },
+        from: { email: this.fromEmail, name: 'Motorista Rico' },
         subject,
         content: [{ type: 'text/html', value: html }],
       }),
@@ -71,7 +71,7 @@ export class EmailService {
     <tr><td align="center">
       <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden">
         <tr><td style="background:#2ECC8A;padding:24px 32px">
-          <p style="margin:0;color:#fff;font-size:20px;font-weight:700">Rota Financeira</p>
+          <p style="margin:0;color:#fff;font-size:20px;font-weight:700">Motorista Rico</p>
           <p style="margin:4px 0 0;color:#d1fae5;font-size:13px">Portal do Influencer</p>
         </td></tr>
         <tr><td style="padding:32px">
@@ -100,14 +100,14 @@ export class EmailService {
             </p>
           </div>
           <p style="margin:24px 0 0;font-size:13px;color:#94a3b8">
-            Acesse o <a href="https://dashboard.rotafinanceira.app" style="color:#2ECC8A;text-decoration:none;font-weight:600">dashboard</a>
+            Acesse o <a href="https://dashboard.motoristarico.app" style="color:#2ECC8A;text-decoration:none;font-weight:600">dashboard</a>
             para ver o histórico completo e baixar materiais de divulgação.
           </p>
         </td></tr>
         <tr><td style="padding:16px 32px;background:#f8fafc;border-top:1px solid #e2e8f0">
           <p style="margin:0;font-size:12px;color:#94a3b8;text-align:center">
-            Rota Financeira — programa Rota Indica<br>
-            <a href="mailto:parceiros@rotafinanceira.app" style="color:#2ECC8A">parceiros@rotafinanceira.app</a>
+            Motorista Rico — programa Rota Indica<br>
+            <a href="mailto:parceiros@motoristarico.app" style="color:#2ECC8A">parceiros@motoristarico.app</a>
           </p>
         </td></tr>
       </table>

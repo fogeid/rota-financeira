@@ -49,7 +49,7 @@ export function NotificationPermissionScreen({ onGranted, onSkip }: Props) {
       <AlertBox
         variant="blue"
         message={
-          'O Rota Financeira lê apenas as notificações do Uber Driver e 99 para Motoristas.\n\n' +
+          'O Motorista Rico lê apenas as notificações do Uber Driver e 99 para Motoristas.\n\n' +
           'WhatsApp, e-mail e outros apps são completamente ignorados.'
         }
         style={{ marginBottom: spacing.md }}

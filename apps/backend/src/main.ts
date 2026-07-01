@@ -47,8 +47,8 @@ async function bootstrap(): Promise<void> {
   );
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Rota Financeira API')
-    .setDescription('API do Rota Financeira — gestão financeira para motoristas de aplicativo')
+    .setTitle('Motorista Rico API')
+    .setDescription('API do Motorista Rico — gestão financeira para motoristas de aplicativo')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

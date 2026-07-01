@@ -167,7 +167,7 @@ export class ReportsService {
       doc.on('error', reject);
 
       // Header
-      doc.fontSize(20).font('Helvetica-Bold').text('Rota Financeira', { align: 'center' });
+      doc.fontSize(20).font('Helvetica-Bold').text('Motorista Rico', { align: 'center' });
       doc.fontSize(14).font('Helvetica').text(`Relatório Mensal — ${month}`, { align: 'center' });
       doc.moveDown();
       doc.fontSize(12).text(`Motorista: ${user.name}`);

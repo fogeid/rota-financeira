@@ -171,9 +171,9 @@ export function RotaIndicaScreen() {
   function handleShareWhatsApp() {
     if (!data?.code) return;
     const msg = encodeURIComponent(
-      `Ei! Tô usando o Rota Financeira pra controlar meus ganhos como motorista.\n` +
+      `Ei! Tô usando o Motorista Rico pra controlar meus ganhos como motorista.\n` +
       `Entra pelo meu link e ganha 7 dias grátis do Premium:\n` +
-      `https://rotafinanceira.app/i/${data.code}`
+      `${process.env.EXPO_PUBLIC_APP_URL ?? 'https://motoristarico.app'}/i/${data.code}`
     );
     Linking.openURL(`whatsapp://send?text=${msg}`).catch(() => {
       Linking.openURL(`https://wa.me/?text=${msg}`);

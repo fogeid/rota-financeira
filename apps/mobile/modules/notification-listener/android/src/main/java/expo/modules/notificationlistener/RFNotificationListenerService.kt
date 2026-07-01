@@ -29,7 +29,7 @@ class RFNotificationListenerService : NotificationListenerService() {
 
     Log.d("RFListener", "Notificação: $title | $body | ${sbn.packageName}")
 
-    val intent = android.content.Intent("com.rotafinanceira.NOTIFICATION")
+    val intent = android.content.Intent("com.motoristarico.NOTIFICATION")
     intent.putExtra("title", title)
     intent.putExtra("body", body)
     intent.putExtra("packageName", sbn.packageName)

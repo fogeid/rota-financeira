@@ -73,7 +73,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </svg>
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-800">Rota Financeira</p>
+              <p className="text-sm font-bold text-slate-800">Motorista Rico</p>
               <p className="text-xs text-slate-400">Painel Admin</p>
             </div>
           </div>
@@ -176,7 +176,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <p className="font-semibold text-slate-800 text-sm">Admin — Rota Financeira</p>
+          <p className="font-semibold text-slate-800 text-sm">Admin — Motorista Rico</p>
         </header>
 
         <main className="flex-1 p-6 lg:p-8 overflow-auto">{children}</main>

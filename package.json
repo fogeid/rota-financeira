@@ -1,5 +1,5 @@
 {
-  "name": "rota-financeira",
+  "name": "motorista-rico",
   "private": true,
   "scripts": {
     "dev": "concurrently --names \"api,app\" --prefix-colors \"cyan,magenta\" \"npm run dev:api\" \"npm run dev:app\"",

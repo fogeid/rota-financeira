@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Rota Financeira — Portal do Influencer',
+  title: 'Motorista Rico — Portal do Influencer',
   description: 'Acompanhe suas comissões e métricas do programa Rota Indica',
 };
 

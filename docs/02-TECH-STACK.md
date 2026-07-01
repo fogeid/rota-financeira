@@ -1,4 +1,4 @@
-# Rota Financeira — Tech Stack e Arquitetura
+# Motorista Rico — Tech Stack e Arquitetura
 
 **Versão:** 1.0 | **Data:** Junho 2026
 

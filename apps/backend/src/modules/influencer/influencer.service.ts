@@ -158,7 +158,7 @@ export class InfluencerService {
       .slice(0, 10);
 
     const slug = referralCode?.slug ?? referralCode?.code ?? '';
-    const link = `https://rotafinanceira.app/i/${slug}`;
+    const link = `https://motoristarico.app/i/${slug}`;
 
     return {
       channel_name: profile.channel_name,
@@ -337,7 +337,7 @@ export class InfluencerService {
         });
         await this.emailService.send({
           to: userEmail,
-          subject: `Seu relatório de comissão de ${refMonthLabel} — Rota Financeira`,
+          subject: `Seu relatório de comissão de ${refMonthLabel} — Motorista Rico`,
           html,
         });
       }
