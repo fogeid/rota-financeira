@@ -7,13 +7,20 @@ export type AdminRole =
 // Espelha EXATAMENTE a tabela de docs/12-ADMIN-PANEL.md seção 7.0
 export const PERMISSIONS = {
   viewDashboardOverview: ['SUPER_ADMIN'],
+
   viewUsers: ['SUPER_ADMIN', 'SUPPORT_DRIVER', 'SUPPORT_DRIVER_INFLUENCER'],
   manageUsers: ['SUPER_ADMIN', 'SUPPORT_DRIVER', 'SUPPORT_DRIVER_INFLUENCER'],
+
   viewInfluencers: ['SUPER_ADMIN', 'SUPPORT_INFLUENCER', 'SUPPORT_DRIVER_INFLUENCER'],
   manageInfluencers: ['SUPER_ADMIN', 'SUPPORT_INFLUENCER', 'SUPPORT_DRIVER_INFLUENCER'],
+  makeInfluencer: ['SUPER_ADMIN', 'SUPPORT_INFLUENCER', 'SUPPORT_DRIVER_INFLUENCER'],
   editInfluencerTier: ['SUPER_ADMIN'],
+
   viewFinance: ['SUPER_ADMIN'],
   manageFinance: ['SUPER_ADMIN'],
+
+  // Todas as roles veem audit-logs; SUPER_ADMIN vê todos, demais veem só o próprio (filtro no backend)
+  viewAuditLogs: ['SUPER_ADMIN', 'SUPPORT_DRIVER', 'SUPPORT_INFLUENCER', 'SUPPORT_DRIVER_INFLUENCER'],
   viewAllAuditLogs: ['SUPER_ADMIN'],
 } as const;
 

@@ -259,6 +259,12 @@ export class AdminController {
   // ── Auditoria ─────────────────────────────────────────────────────────────
 
   @Get('audit-logs')
+  @AdminRoles(
+    AdminRole.SUPER_ADMIN,
+    AdminRole.SUPPORT_DRIVER,
+    AdminRole.SUPPORT_INFLUENCER,
+    AdminRole.SUPPORT_DRIVER_INFLUENCER,
+  )
   getAuditLogs(
     @CurrentAdmin() admin: CurrentAdminUser,
     @Query('admin_id') adminId?: string,
