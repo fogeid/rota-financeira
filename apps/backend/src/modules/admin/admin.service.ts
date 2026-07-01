@@ -1,5 +1,15 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { AdminRole, InfluencerStatus, InfluencerTier, Plan, WithdrawalStatus } from '@prisma/client';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  AdminRole,
+  BillingCycle,
+  InfluencerStatus,
+  InfluencerTier,
+  Plan,
+  ReferralStatus,
+  ReferralType,
+  SubscriptionStatus,
+  WithdrawalStatus,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EncryptionService } from '../../common/services/encryption.service';
 import { cleanCpf } from '../../common/validators/cpf.validator';
@@ -13,6 +23,8 @@ import { MakeInfluencerAdminDto } from './dto/make-influencer-admin.dto';
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly encryption: EncryptionService,
@@ -22,6 +34,183 @@ export class AdminService {
   ) {}
 
   // ── Dashboard ────────────────────────────────────────────────────────────
+
+  async getCompleteOverview() {
+    const t0 = Date.now();
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const fifteenDaysAgo = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
+    const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    const threeDaysAgo = new Date(now.getTime() - 72 * 60 * 60 * 1000);
+    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    // ── Grupo 1: Usuários ─────────────────────────────────────────────────
+    const [
+      totalUsers, totalFree, totalPremium, totalTrial,
+      newThisWeek, newThisMonth,
+      churnThisMonth, totalConvertedFromTrial, trialsExpiringInWeek,
+    ] = await Promise.all([
+      this.prisma.user.count({ where: { is_active: true, deleted_at: null } }),
+      this.prisma.user.count({ where: { plan: Plan.FREE, is_active: true, deleted_at: null } }),
+      this.prisma.user.count({ where: { plan: Plan.PRO, is_active: true, deleted_at: null } }),
+      this.prisma.user.count({
+        where: { plan: Plan.FREE, is_active: true, deleted_at: null, trial_ends_at: { gt: now } },
+      }),
+      this.prisma.user.count({ where: { deleted_at: null, created_at: { gte: startOfWeek } } }),
+      this.prisma.user.count({ where: { deleted_at: null, created_at: { gte: startOfMonth } } }),
+      this.prisma.subscription.count({
+        where: { status: SubscriptionStatus.CANCELED, updated_at: { gte: startOfMonth } },
+      }),
+      this.prisma.user.count({ where: { plan: Plan.PRO, plan_granted_by: 'PAYMENT', deleted_at: null } }),
+      this.prisma.user.count({
+        where: { plan: Plan.FREE, deleted_at: null, trial_ends_at: { gt: now, lt: nextWeek } },
+      }),
+    ]);
+
+    // ── Grupo 2: Financeiro (MRR) ─────────────────────────────────────────
+    const [
+      monthlySubsAgg, annualSubsAgg,
+      monthlySubsCount, annualSubsCount,
+      revenueThisMonthAgg, revenueThisYearAgg,
+      premiumLastMonth,
+    ] = await Promise.all([
+      this.prisma.subscription.aggregate({
+        _sum: { amount_cents: true },
+        where: { status: SubscriptionStatus.ACTIVE, billing_cycle: BillingCycle.MONTHLY },
+      }),
+      this.prisma.subscription.aggregate({
+        _sum: { amount_cents: true },
+        where: { status: SubscriptionStatus.ACTIVE, billing_cycle: BillingCycle.YEARLY },
+      }),
+      this.prisma.subscription.count({
+        where: { status: SubscriptionStatus.ACTIVE, billing_cycle: BillingCycle.MONTHLY },
+      }),
+      this.prisma.subscription.count({
+        where: { status: SubscriptionStatus.ACTIVE, billing_cycle: BillingCycle.YEARLY },
+      }),
+      this.prisma.payment.aggregate({
+        _sum: { amount_cents: true },
+        where: { status: 'PAID', paid_at: { gte: startOfMonth } },
+      }),
+      this.prisma.payment.aggregate({
+        _sum: { amount_cents: true },
+        where: { status: 'PAID', paid_at: { gte: startOfYear } },
+      }),
+      this.prisma.user.count({
+        where: { plan: Plan.PRO, deleted_at: null, created_at: { lte: endOfLastMonth } },
+      }),
+    ]);
+
+    const mrr =
+      (monthlySubsAgg._sum.amount_cents ?? 0) / 100 +
+      (annualSubsAgg._sum.amount_cents ?? 0) / 100 / 12;
+    const mrrFallback = totalPremium * 9.9;
+    const mrrGrowth =
+      premiumLastMonth > 0
+        ? Math.round(((totalPremium - premiumLastMonth) / premiumLastMonth) * 100)
+        : 0;
+
+    // ── Grupo 3: Indicação ────────────────────────────────────────────────
+    const [
+      totalReferralCodes, activeReferralCodes,
+      pendingReferrals, convertedReferrals,
+      cashbackPaidAgg,
+      acquiredOrganic, acquiredByDriver, acquiredByInfluencer,
+    ] = await Promise.all([
+      this.prisma.referralCode.count(),
+      this.prisma.referralCode.count({ where: { is_active: true } }),
+      this.prisma.referral.count({ where: { status: ReferralStatus.REGISTERED } }),
+      this.prisma.referral.count({ where: { status: ReferralStatus.CONVERTED } }),
+      this.prisma.referralWithdrawal.aggregate({
+        _sum: { amount: true },
+        where: { status: WithdrawalStatus.PAID, processed_at: { gte: startOfMonth } },
+      }),
+      this.prisma.user.count({ where: { referred_by: null, deleted_at: null } }),
+      this.prisma.referral.count({ where: { referral_code: { type: ReferralType.USER } } }),
+      this.prisma.referral.count({ where: { referral_code: { type: ReferralType.INFLUENCER } } }),
+    ]);
+
+    // ── Grupo 4: Engajamento ──────────────────────────────────────────────
+    const [dauGroups, mauGroups, weekGroups, premiumAtRisk] = await Promise.all([
+      this.prisma.earning.groupBy({ by: ['user_id'], where: { created_at: { gte: yesterday } } }),
+      this.prisma.earning.groupBy({ by: ['user_id'], where: { created_at: { gte: startOfMonth } } }),
+      this.prisma.earning.groupBy({ by: ['user_id'], where: { created_at: { gte: startOfWeek } } }),
+      this.prisma.user.count({
+        where: {
+          plan: Plan.PRO, is_active: true, deleted_at: null,
+          earnings: { none: { created_at: { gte: fifteenDaysAgo } } },
+        },
+      }),
+    ]);
+
+    // ── Grupo 5: Alertas Operacionais ─────────────────────────────────────
+    const [stalePendingWithdrawals, pendingInfluencers, overdueInfluencers] = await Promise.all([
+      this.prisma.referralWithdrawal.count({
+        where: { status: WithdrawalStatus.PENDING, created_at: { lt: twoDaysAgo } },
+      }),
+      this.prisma.influencerProfile.count({ where: { status: InfluencerStatus.PENDING } }),
+      this.prisma.influencerProfile.count({
+        where: { status: InfluencerStatus.PENDING, created_at: { lt: threeDaysAgo } },
+      }),
+    ]);
+
+    const elapsed = Date.now() - t0;
+    if (elapsed > 500) {
+      this.logger.warn(`getCompleteOverview demorou ${elapsed}ms`);
+    }
+
+    return {
+      users: {
+        total: totalUsers,
+        free: totalFree,
+        premium: totalPremium,
+        trial: totalTrial,
+        new_this_week: newThisWeek,
+        new_this_month: newThisMonth,
+        churn_this_month: churnThisMonth,
+        trial_conversion_rate: Math.round((totalConvertedFromTrial / Math.max(totalUsers, 1)) * 100),
+        trials_expiring_in_7_days: trialsExpiringInWeek,
+      },
+      finance: {
+        mrr: mrr > 0 ? mrr : mrrFallback,
+        mrr_growth_pct: mrrGrowth,
+        revenue_this_month: (revenueThisMonthAgg._sum.amount_cents ?? 0) / 100,
+        revenue_this_year: (revenueThisYearAgg._sum.amount_cents ?? 0) / 100,
+        monthly_subscribers: monthlySubsCount,
+        annual_subscribers: annualSubsCount,
+      },
+      referral: {
+        total_codes: totalReferralCodes,
+        active_codes: activeReferralCodes,
+        adoption_rate: Math.round((activeReferralCodes / Math.max(totalUsers, 1)) * 100),
+        pending_conversions: pendingReferrals,
+        total_converted: convertedReferrals,
+        cashback_paid_this_month: Number(cashbackPaidAgg._sum.amount ?? 0),
+        acquisition: {
+          organic: acquiredOrganic,
+          by_driver: acquiredByDriver,
+          by_influencer: acquiredByInfluencer,
+        },
+      },
+      engagement: {
+        dau: dauGroups.length,
+        mau: mauGroups.length,
+        dau_mau_ratio: mauGroups.length > 0 ? Math.round((dauGroups.length / mauGroups.length) * 100) : 0,
+        active_drivers_this_week: weekGroups.length,
+        premium_at_risk: premiumAtRisk,
+      },
+      alerts: {
+        stale_withdrawals: stalePendingWithdrawals,
+        pending_influencers: pendingInfluencers,
+        overdue_influencers: overdueInfluencers,
+        trials_expiring_soon: trialsExpiringInWeek,
+      },
+    };
+  }
 
   async getDashboardOverview() {
     const now = new Date();

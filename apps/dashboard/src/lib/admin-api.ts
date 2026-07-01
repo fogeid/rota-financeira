@@ -55,6 +55,55 @@ export async function fetchDashboardOverview(): Promise<DashboardOverview> {
   return data;
 }
 
+export interface CompleteOverview {
+  users: {
+    total: number;
+    free: number;
+    premium: number;
+    trial: number;
+    new_this_week: number;
+    new_this_month: number;
+    churn_this_month: number;
+    trial_conversion_rate: number;
+    trials_expiring_in_7_days: number;
+  };
+  finance: {
+    mrr: number;
+    mrr_growth_pct: number;
+    revenue_this_month: number;
+    revenue_this_year: number;
+    monthly_subscribers: number;
+    annual_subscribers: number;
+  };
+  referral: {
+    total_codes: number;
+    active_codes: number;
+    adoption_rate: number;
+    pending_conversions: number;
+    total_converted: number;
+    cashback_paid_this_month: number;
+    acquisition: { organic: number; by_driver: number; by_influencer: number };
+  };
+  engagement: {
+    dau: number;
+    mau: number;
+    dau_mau_ratio: number;
+    active_drivers_this_week: number;
+    premium_at_risk: number;
+  };
+  alerts: {
+    stale_withdrawals: number;
+    pending_influencers: number;
+    overdue_influencers: number;
+    trials_expiring_soon: number;
+  };
+}
+
+export async function fetchCompleteOverview(): Promise<CompleteOverview> {
+  const { data } = await adminApi.get<CompleteOverview>('/dashboard/overview-complete');
+  return data;
+}
+
 // ── Usuários ──────────────────────────────────────────────────────────────────
 
 export interface AdminUser {

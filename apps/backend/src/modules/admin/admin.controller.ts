@@ -46,6 +46,12 @@ export class AdminController {
     return this.adminService.getDashboardOverview();
   }
 
+  @Get('dashboard/overview-complete')
+  @AdminRoles(AdminRole.SUPER_ADMIN)
+  getCompleteOverview() {
+    return this.adminService.getCompleteOverview();
+  }
+
   // ── Usuários ──────────────────────────────────────────────────────────────
 
   @Get('users')
