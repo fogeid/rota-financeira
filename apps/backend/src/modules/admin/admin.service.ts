@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import {
   AdminRole,
   BillingCycle,
@@ -265,6 +266,87 @@ export class AdminService {
         total_amount: Number(pendingWithdrawals._sum.amount ?? 0),
       },
     };
+  }
+
+  // ── Equipe Admin ─────────────────────────────────────────────────────────
+
+  async listAdminTeam() {
+    const admins = await this.prisma.adminUser.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        is_active: true,
+        must_change_password: true,
+        last_login_at: true,
+        created_at: true,
+        _count: { select: { audit_logs: true } },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+    return admins.map(({ _count, ...a }) => ({ ...a, audit_logs_count: _count.audit_logs }));
+  }
+
+  async createAdminMember(
+    dto: { name: string; email: string; role: AdminRole; temporary_password: string },
+    currentAdminId: string,
+  ) {
+    const existing = await this.prisma.adminUser.findUnique({ where: { email: dto.email } });
+    if (existing) throw new ConflictException('Este e-mail já está cadastrado como admin');
+    if (!Object.values(AdminRole).includes(dto.role)) {
+      throw new BadRequestException('Role inválida');
+    }
+    const password_hash = await bcrypt.hash(dto.temporary_password, 12);
+    const admin = await this.prisma.adminUser.create({
+      data: { name: dto.name, email: dto.email, role: dto.role, password_hash, must_change_password: true },
+      select: { id: true, name: true, email: true, role: true, is_active: true, created_at: true },
+    });
+    await this.auditService.log(currentAdminId, 'create_admin', 'AdminUser', admin.id, {
+      name: dto.name,
+      email: dto.email,
+      role: dto.role,
+    });
+    return admin;
+  }
+
+  async updateAdminMemberRole(id: string, role: AdminRole, currentAdminId: string) {
+    if (id === currentAdminId) {
+      throw new BadRequestException(
+        'Você não pode alterar sua própria role. Peça para outro SUPER_ADMIN fazer isso.',
+      );
+    }
+    const target = await this.prisma.adminUser.findUnique({ where: { id } });
+    if (!target) throw new NotFoundException('Admin não encontrado');
+    if (!Object.values(AdminRole).includes(role)) throw new BadRequestException('Role inválida');
+    await this.prisma.adminUser.update({ where: { id }, data: { role } });
+    await this.auditService.log(currentAdminId, 'update_admin_role', 'AdminUser', id, {
+      before: target.role,
+      after: role,
+    });
+    return { ok: true };
+  }
+
+  async deactivateAdminMember(id: string, currentAdminId: string) {
+    if (id === currentAdminId) {
+      throw new BadRequestException('Você não pode desativar sua própria conta.');
+    }
+    const target = await this.prisma.adminUser.findUnique({ where: { id } });
+    if (!target) throw new NotFoundException('Admin não encontrado');
+    await this.prisma.adminUser.update({ where: { id }, data: { is_active: false } });
+    await this.auditService.log(currentAdminId, 'deactivate_admin', 'AdminUser', id, {});
+    return { ok: true };
+  }
+
+  async reactivateAdminMember(id: string, currentAdminId: string) {
+    if (id === currentAdminId) {
+      throw new BadRequestException('Não é possível reativar a si mesmo.');
+    }
+    const target = await this.prisma.adminUser.findUnique({ where: { id } });
+    if (!target) throw new NotFoundException('Admin não encontrado');
+    await this.prisma.adminUser.update({ where: { id }, data: { is_active: true } });
+    await this.auditService.log(currentAdminId, 'reactivate_admin', 'AdminUser', id, {});
+    return { ok: true };
   }
 
   // ── Usuários ─────────────────────────────────────────────────────────────

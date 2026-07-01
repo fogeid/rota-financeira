@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminLogin } from '@/lib/admin-api';
-import { setAdminAuthToken, setAdminRole } from '@/lib/admin-auth';
+import { setAdminAuthToken, setAdminRole, setMustChangePassword } from '@/lib/admin-auth';
 import { getDefaultRoute } from '@/lib/admin-permissions';
 
 export default function AdminLoginPage() {
@@ -21,7 +21,12 @@ export default function AdminLoginPage() {
       const result = await adminLogin(email, password);
       setAdminAuthToken(result.access_token);
       setAdminRole(result.admin.role);
-      router.push(getDefaultRoute(result.admin.role));
+      setMustChangePassword(result.admin.must_change_password);
+      if (result.admin.must_change_password) {
+        router.push('/admin/trocar-senha');
+      } else {
+        router.push(getDefaultRoute(result.admin.role));
+      }
     } catch (err: unknown) {
       const apiErr = err as { response?: { status?: number; data?: { message?: string } } };
       if (apiErr?.response?.status === 429) {

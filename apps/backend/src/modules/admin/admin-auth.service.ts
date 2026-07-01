@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -42,7 +42,12 @@ export class AdminAuthService {
     });
 
     const secret = this.config.getOrThrow<string>('ADMIN_JWT_SECRET');
-    const payload = { sub: admin.id, role: admin.role, type: 'admin' };
+    const payload = {
+      sub: admin.id,
+      role: admin.role,
+      type: 'admin',
+      must_change_password: admin.must_change_password,
+    };
 
     const access_token = this.jwt.sign(payload, { secret, expiresIn: '15m' });
     const refresh_token = this.jwt.sign(payload, { secret, expiresIn: '30d' });
@@ -50,8 +55,30 @@ export class AdminAuthService {
     return {
       access_token,
       refresh_token,
-      admin: { id: admin.id, name: admin.name, email: admin.email, role: admin.role },
+      admin: {
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+        must_change_password: admin.must_change_password,
+      },
     };
+  }
+
+  async changePassword(adminId: string, currentPassword: string, newPassword: string) {
+    const admin = await this.prisma.adminUser.findUnique({ where: { id: adminId } });
+    if (!admin) throw new UnauthorizedException('Admin não encontrado');
+    const valid = await bcrypt.compare(currentPassword, admin.password_hash);
+    if (!valid) throw new UnauthorizedException('Senha atual incorreta');
+    if (newPassword.length < 8) {
+      throw new BadRequestException('A nova senha deve ter pelo menos 8 caracteres');
+    }
+    const password_hash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.adminUser.update({
+      where: { id: adminId },
+      data: { password_hash, must_change_password: false },
+    });
+    return { ok: true };
   }
 
   private async recordFailure(email: string): Promise<void> {

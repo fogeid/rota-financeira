@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getAdminRole, adminLogout } from '@/lib/admin-auth';
+import { getAdminRole, adminLogout, getMustChangePassword } from '@/lib/admin-auth';
 import { hasPermission, type AdminRole } from '@/lib/admin-permissions';
 
 function SidebarLink({
@@ -29,12 +29,20 @@ function SidebarLink({
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [role, setRole] = useState<AdminRole | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     setRole(getAdminRole());
-  }, []);
+    if (
+      getMustChangePassword() &&
+      pathname !== '/admin/login' &&
+      pathname !== '/admin/trocar-senha'
+    ) {
+      router.replace('/admin/trocar-senha');
+    }
+  }, [pathname, router]);
 
   const isActive = (href: string) =>
     href === '/admin' ? pathname === href : pathname.startsWith(href);
@@ -131,6 +139,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </svg>
               {role === 'SUPER_ADMIN' ? 'Auditoria (todos)' : 'Meu histórico'}
             </SidebarLink>
+
+            {role === 'SUPER_ADMIN' && (
+              <SidebarLink href="/admin/equipe" active={isActive('/admin/equipe')}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Equipe
+              </SidebarLink>
+            )}
           </nav>
 
           {/* Logout */}

@@ -9,6 +9,7 @@ interface AdminJwtPayload {
   sub: string;
   role: AdminRole;
   type: string;
+  must_change_password?: boolean;
 }
 
 @Injectable()
@@ -24,6 +25,6 @@ export class AdminJwtStrategy extends PassportStrategy(Strategy, 'admin-jwt') {
     if (payload.type !== 'admin') {
       throw new UnauthorizedException('Token inválido para esta área');
     }
-    return { id: payload.sub, role: payload.role };
+    return { id: payload.sub, role: payload.role, must_change_password: payload.must_change_password };
   }
 }

@@ -11,6 +11,7 @@ import { AdminAuditService } from './admin-audit.service';
 import { AdminJwtStrategy } from './strategies/admin-jwt.strategy';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
 import { AdminRolesGuard } from './guards/admin-roles.guard';
+import { MustChangePasswordGuard } from './guards/must-change-password.guard';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { AdminRolesGuard } from './guards/admin-roles.guard';
     AdminJwtStrategy,
     AdminJwtGuard,
     AdminRolesGuard,
+    MustChangePasswordGuard,
   ],
 })
 export class AdminModule {}

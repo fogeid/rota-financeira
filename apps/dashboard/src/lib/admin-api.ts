@@ -28,12 +28,57 @@ adminApi.interceptors.response.use(
 export interface AdminLoginResponse {
   access_token: string;
   refresh_token: string;
-  admin: { id: string; name: string; email: string; role: AdminRole };
+  admin: { id: string; name: string; email: string; role: AdminRole; must_change_password: boolean };
 }
 
 export async function adminLogin(email: string, password: string): Promise<AdminLoginResponse> {
   const { data } = await adminApi.post<AdminLoginResponse>('/auth/login', { email, password });
   return data;
+}
+
+export async function adminChangePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await adminApi.post('/auth/change-password', { current_password: currentPassword, new_password: newPassword });
+}
+
+// ── Equipe Admin ──────────────────────────────────────────────────────────────
+
+export interface AdminMember {
+  id: string;
+  name: string;
+  email: string;
+  role: AdminRole;
+  is_active: boolean;
+  must_change_password: boolean;
+  last_login_at: string | null;
+  created_at: string;
+  audit_logs_count: number;
+}
+
+export async function fetchAdminTeam(): Promise<AdminMember[]> {
+  const { data } = await adminApi.get<AdminMember[]>('/team');
+  return data;
+}
+
+export async function createAdminMember(payload: {
+  name: string;
+  email: string;
+  role: AdminRole;
+  temporary_password: string;
+}): Promise<AdminMember> {
+  const { data } = await adminApi.post<AdminMember>('/team', payload);
+  return data;
+}
+
+export async function updateAdminMemberRole(id: string, role: AdminRole): Promise<void> {
+  await adminApi.patch(`/team/${id}/role`, { role });
+}
+
+export async function deactivateAdminMember(id: string): Promise<void> {
+  await adminApi.patch(`/team/${id}/deactivate`);
+}
+
+export async function reactivateAdminMember(id: string): Promise<void> {
+  await adminApi.patch(`/team/${id}/reactivate`);
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────

@@ -613,15 +613,16 @@ enum AdminRole {
 }
 
 model AdminUser {
-  id            String    @id @default(uuid())
-  name          String
-  email         String    @unique
-  password_hash String
-  role          AdminRole @default(SUPPORT_DRIVER)
-  is_active     Boolean   @default(true)
-  last_login_at DateTime?
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
+  id                   String    @id @default(uuid())
+  name                 String
+  email                String    @unique
+  password_hash        String
+  role                 AdminRole @default(SUPPORT_DRIVER)
+  is_active            Boolean   @default(true)
+  must_change_password Boolean   @default(false)
+  last_login_at        DateTime?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
 
   audit_logs    AdminAuditLog[]
 
