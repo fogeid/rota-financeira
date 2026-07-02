@@ -37,6 +37,7 @@ describe('UsersService', () => {
     created_at: new Date(),
     updated_at: new Date(),
     deleted_at: null,
+    plan_granted_by: null,
     ...overrides,
   });
 
