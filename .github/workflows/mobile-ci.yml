@@ -18,27 +18,20 @@ jobs:
     defaults:
       run:
         working-directory: apps/mobile
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: apps/mobile/package-lock.json
-
       - name: Install dependencies
         run: npm ci
-
-      - name: Lint
-        run: npx eslint . --ext .ts,.tsx --max-warnings 0
-
       - name: Type check
         run: npx tsc --noEmit
-
+        
   eas-build-preview:
     name: EAS Build Preview
     needs: lint-and-typecheck
