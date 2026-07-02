@@ -37,7 +37,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     pagarmePublicKey: process.env.PAGARME_PUBLIC_KEY ?? '',
     firebaseWebApiKey: process.env.FIREBASE_WEB_API_KEY ?? '',
     eas: {
-      projectId: process.env.EAS_PROJECT_ID ?? '',
+      projectId: "18ed6f98-7e21-40f8-bbb5-cb51d2acc0ff",
     },
   },
   updates: {
