@@ -59,6 +59,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         } else if (typeof responseObj.message === 'string') {
           message = responseObj.message;
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { statusCode: _s, message: _m, error: _e, ...rest } = responseObj;
         extra = rest;
       }
