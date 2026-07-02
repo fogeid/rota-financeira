@@ -44,11 +44,13 @@ import { REDIS_CLIENT, RedisModule } from './redis/redis.module';
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const redisUrl = new URL(config.getOrThrow<string>('REDIS_URL'));
+        const redisUrl = new URL(config.getOrThrow('REDIS_URL'));
         return {
           connection: {
             host: redisUrl.hostname,
             port: parseInt(redisUrl.port || '6379', 10),
+            password: redisUrl.password || undefined,  // ← estava faltando
+            username: redisUrl.username || undefined,  // ← estava faltando
             maxRetriesPerRequest: null,
           },
         };
