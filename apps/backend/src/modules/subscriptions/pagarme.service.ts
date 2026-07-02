@@ -69,7 +69,7 @@ export class PagarmeService {
       billing_type: 'prepaid',
       items: [
         {
-          description: 'Rota Financeira Premium',
+          description: 'Motorista Rico Premium',
           pricing_scheme: {
             price: params.amountCents,
             scheme_type: 'unit',

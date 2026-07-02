@@ -1,4 +1,4 @@
-# Rota Financeira — Product Requirements Document (PRD)
+# Motorista Rico — Product Requirements Document (PRD)
 
 **Versão:** 1.0 | **Data:** Junho 2026 | **Status:** Aprovado para desenvolvimento
 
@@ -6,7 +6,7 @@
 
 ## 1. Visão do Produto
 
-Rota Financeira é um aplicativo mobile de gestão financeira exclusivo para motoristas de aplicativo (Uber, 99, iFood). Resolve um problema crítico: motoristas não sabem quanto ganham de verdade depois de descontar combustível, manutenção, impostos e a parcela do financiamento do veículo.
+Motorista Rico é um aplicativo mobile de gestão financeira exclusivo para motoristas de aplicativo (Uber, 99, iFood). Resolve um problema crítico: motoristas não sabem quanto ganham de verdade depois de descontar combustível, manutenção, impostos e a parcela do financiamento do veículo.
 
 **Proposta de valor:** "Saiba exatamente quanto precisa ganhar por dia para pagar o carro, cobrir seus custos e ainda sobrar dinheiro no bolso."
 

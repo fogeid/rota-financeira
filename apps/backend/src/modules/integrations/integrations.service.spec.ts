@@ -103,7 +103,6 @@ describe('IntegrationsService', () => {
     });
 
     it('creates credential and enqueues sync on success', async () => {
-      const crypto = require('crypto') as typeof import('crypto');
       mockEncryption.deriveUserKey.mockReturnValue(crypto.randomBytes(32));
       mockPrisma.platformCredential.findUnique.mockResolvedValue(null);
       mockPrisma.platformCredential.create.mockResolvedValue({ id: 'cred-new' });

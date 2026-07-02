@@ -4,6 +4,7 @@ import { AdminRole } from '@prisma/client';
 export interface CurrentAdminUser {
   id: string;
   role: AdminRole;
+  must_change_password?: boolean;
 }
 
 export const CurrentAdmin = createParamDecorator(

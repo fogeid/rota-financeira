@@ -2,18 +2,18 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'Rota Financeira',
-  slug: 'rota-financeira',
+  name: 'Motorista Rico',
+  slug: 'motorista-rico',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'dark',
   ios: {
     supportsTablet: false,
-    bundleIdentifier: 'app.rotafinanceira.mobile',
+    bundleIdentifier: 'app.motoristarico',
   },
   android: {
-    package: 'app.rotafinanceira.mobile',
+    package: 'app.motoristarico',
     adaptiveIcon: {
       foregroundImage: './assets/android-icon-foreground.png',
       backgroundImage: './assets/android-icon-background.png',
@@ -37,7 +37,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     pagarmePublicKey: process.env.PAGARME_PUBLIC_KEY ?? '',
     firebaseWebApiKey: process.env.FIREBASE_WEB_API_KEY ?? '',
     eas: {
-      projectId: process.env.EAS_PROJECT_ID ?? '',
+      projectId: "18ed6f98-7e21-40f8-bbb5-cb51d2acc0ff",
     },
   },
   updates: {

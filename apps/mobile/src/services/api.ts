@@ -1,7 +1,11 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'axios';
 import { secureStorage } from '../utils/secureStorage';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000/v1';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+
+if (!API_BASE_URL) {
+  throw new Error('EXPO_PUBLIC_API_URL não configurada — verificar eas.json ou .env');
+}
 
 export const SECURE_KEYS = {
   ACCESS_TOKEN: 'rf_access_token',

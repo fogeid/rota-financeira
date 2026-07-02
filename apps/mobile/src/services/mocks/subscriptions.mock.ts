@@ -36,7 +36,7 @@ export const subscriptionsMock = {
   async subscribePix(planId: 'premium_annual'): Promise<{ qr_code: string; qr_code_url: string; expires_at: string; amount_cents: number }> {
     await delay(600);
     return {
-      qr_code: '00020126580014br.gov.bcb.pix0136fake-pix-key-rota-financeira5204000053039865406890.005802BR5925Rota Financeira LTDA6009SAO PAULO62070503***6304ABCD',
+      qr_code: '00020126580014br.gov.bcb.pix0136fake-pix-key-motorista-rico5204000053039865406890.005802BR5925Motorista Rico LTDA6009SAO PAULO62070503***6304ABCD',
       qr_code_url: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=pix-mock',
       expires_at: new Date(Date.now() + 30 * 60000).toISOString(),
       amount_cents: 8900,

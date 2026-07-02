@@ -33,7 +33,7 @@ export class OtpDeliveryService {
     }
 
     const e164 = phone.startsWith('+') ? phone : `+55${phone.replace(/\D/g, '')}`;
-    const message = `Seu código Rota Financeira: ${code}. Válido por 5 minutos. Não compartilhe.`;
+    const message = `Seu código Motorista Rico: ${code}. Válido por 5 minutos. Não compartilhe.`;
 
     const response = await fetch('https://api.zenvia.com/v2/channels/sms/messages', {
       method: 'POST',
@@ -42,7 +42,7 @@ export class OtpDeliveryService {
         'X-API-TOKEN': apiToken,
       },
       body: JSON.stringify({
-        from: 'RotaFinanceira',
+        from: 'MotoristaRico',
         to: e164,
         contents: [{ type: 'text', text: message }],
       }),

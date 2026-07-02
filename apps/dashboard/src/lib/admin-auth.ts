@@ -5,6 +5,7 @@ import type { AdminRole } from './admin-permissions';
 const TOKEN_COOKIE = 'admin_token';
 const ROLE_COOKIE = 'admin_role';
 const ROLE_KEY = 'admin_role';
+const MCP_KEY = 'admin_must_change_password';
 
 function setCookie(name: string, value: string, maxAge: number): void {
   document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}; SameSite=Strict`;
@@ -51,9 +52,27 @@ export function removeAdminRole(): void {
   }
 }
 
+export function setMustChangePassword(flag: boolean): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(MCP_KEY, String(flag));
+  }
+}
+
+export function getMustChangePassword(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(MCP_KEY) === 'true';
+}
+
+export function removeMustChangePassword(): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(MCP_KEY);
+  }
+}
+
 export function adminLogout(): void {
   removeAdminAuthToken();
   removeAdminRole();
+  removeMustChangePassword();
   if (typeof window !== 'undefined') {
     window.location.href = '/admin/login';
   }

@@ -37,7 +37,7 @@ export class FcmService implements OnModuleInit {
             clientEmail,
           }),
         },
-        'rota-financeira',
+        'motorista-rico',
       );
       this.messaging = getMessaging(app);
       this.logger.log('FcmService: Firebase Admin SDK inicializado');

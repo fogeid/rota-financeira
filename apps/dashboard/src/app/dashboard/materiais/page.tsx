@@ -8,7 +8,7 @@ import QRCode from 'qrcode';
 const POSTS_SUGERIDOS = [
   {
     plataforma: 'YouTube (descrição)',
-    texto: `🚗 Motorista de app? Controla suas finanças com o Rota Financeira!
+    texto: `🚗 Motorista de app? Controla suas finanças com o Motorista Rico!
 Acompanhe seus ganhos, custos e meta diária em um só lugar.
 Experimente 14 dias Premium grátis pelo meu link: {link}`,
   },
@@ -20,7 +20,7 @@ Link na bio: {link}`,
   },
   {
     plataforma: 'WhatsApp / Telegram',
-    texto: `Galera, to usando o Rota Financeira pra controlar minha renda de motorista.
+    texto: `Galera, to usando o Motorista Rico pra controlar minha renda de motorista.
 Ele calcula meta diária, registra corridas e acompanha os gastos do carro.
 Entra pelo meu link e ganha 14 dias Premium grátis: {link}`,
   },
@@ -78,7 +78,7 @@ export default function MateriaisPage() {
     if (!qrDataUrl) return;
     const a = document.createElement('a');
     a.href = qrDataUrl;
-    a.download = 'qrcode-rota-financeira.png';
+    a.download = 'qrcode-motorista-rico.png';
     a.click();
   }
 
@@ -206,13 +206,13 @@ export default function MateriaisPage() {
       <div className="bg-gradient-to-br from-brand-500 to-brand-600 rounded-2xl p-6 text-white">
         <h2 className="text-sm font-semibold text-green-100 mb-1">Banners de divulgação</h2>
         <p className="text-sm text-green-200">
-          Banners personalizados com seu link serão disponibilizados pela equipe Rota Financeira. Entre em contato via e-mail para solicitar artes personalizadas.
+          Banners personalizados com seu link serão disponibilizados pela equipe Motorista Rico. Entre em contato via e-mail para solicitar artes personalizadas.
         </p>
         <a
-          href="mailto:parceiros@rotafinanceira.app"
+          href="mailto:parceiros@motoristarico.app"
           className="inline-block mt-3 text-sm font-medium text-white underline hover:text-green-200 transition"
         >
-          parceiros@rotafinanceira.app
+          parceiros@motoristarico.app
         </a>
       </div>
 

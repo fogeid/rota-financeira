@@ -15,10 +15,11 @@
         "simulator": true
       },
       "env": {
-        "APP_ENV": "development"
+        "EXPO_PUBLIC_API_URL": "http://localhost:3000/v1",
+        "EXPO_PUBLIC_ENV": "development"
       }
     },
-    "preview": {
+    "staging": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
@@ -27,7 +28,8 @@
         "simulator": false
       },
       "env": {
-        "APP_ENV": "preview"
+        "EXPO_PUBLIC_API_URL": "https://[URL-STAGING-RAILWAY].up.railway.app/v1",
+        "EXPO_PUBLIC_ENV": "staging"
       }
     },
     "production": {
@@ -35,9 +37,13 @@
       "android": {
         "buildType": "app-bundle"
       },
+      "ios": {
+        "distribution": "store"
+      },
       "autoIncrement": true,
       "env": {
-        "APP_ENV": "production"
+        "EXPO_PUBLIC_API_URL": "https://[URL-PRODUCTION-RAILWAY].up.railway.app/v1",
+        "EXPO_PUBLIC_ENV": "production"
       }
     }
   },
@@ -46,11 +52,6 @@
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
         "track": "internal"
-      },
-      "ios": {
-        "appleId": "dev.fogeid@gmail.com",
-        "ascAppId": "",
-        "appleTeamId": ""
       }
     }
   }

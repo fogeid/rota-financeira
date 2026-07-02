@@ -23,6 +23,7 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
 import { ReferralModule } from './modules/referral/referral.module';
 import { InfluencerModule } from './modules/influencer/influencer.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { HealthModule } from './health/health.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { TaxesModule } from './modules/taxes/taxes.module';
@@ -49,6 +50,9 @@ import { REDIS_CLIENT, RedisModule } from './redis/redis.module';
           connection: {
             host: redisUrl.hostname,
             port: parseInt(redisUrl.port || '6379', 10),
+            // password e username obrigatórios quando o Redis Railway exige auth (NOAUTH)
+            password: redisUrl.password || undefined,
+            username: redisUrl.username || undefined,
             maxRetriesPerRequest: null,
           },
         };
@@ -101,6 +105,7 @@ import { REDIS_CLIENT, RedisModule } from './redis/redis.module';
     ReferralModule,
     InfluencerModule,
     AdminModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [

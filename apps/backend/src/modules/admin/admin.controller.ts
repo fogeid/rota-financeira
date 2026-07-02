@@ -11,15 +11,36 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AdminRole, InfluencerStatus, InfluencerTier, WithdrawalStatus } from '@prisma/client';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
 import { Public } from '../../common/decorators/public.decorator';
 import { UpdateUserAdminDto } from './dto/update-user-admin.dto';
 import { MakeInfluencerAdminDto } from './dto/make-influencer-admin.dto';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
 import { AdminRolesGuard } from './guards/admin-roles.guard';
+import { MustChangePasswordGuard } from './guards/must-change-password.guard';
 import { AdminRoles } from './decorators/admin-roles.decorator';
 import { CurrentAdmin, CurrentAdminUser } from './decorators/current-admin.decorator';
 import { AdminService } from './admin.service';
+
+class CreateAdminMemberDto {
+  @IsString()
+  name!: string;
+
+  @IsEmail()
+  email!: string;
+
+  @IsEnum(AdminRole)
+  role!: AdminRole;
+
+  @IsString()
+  @MinLength(8)
+  temporary_password!: string;
+}
+
+class UpdateAdminRoleDto {
+  @IsEnum(AdminRole)
+  role!: AdminRole;
+}
 
 class RejectSuspendDto {
   @IsOptional()
@@ -34,9 +55,49 @@ class UpdateTierDto {
 
 @Public()
 @Controller('admin')
-@UseGuards(AdminJwtGuard, AdminRolesGuard)
+@UseGuards(AdminJwtGuard, MustChangePasswordGuard, AdminRolesGuard)
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
+
+  // ── Equipe Admin ─────────────────────────────────────────────────────────
+
+  @Get('team')
+  @AdminRoles(AdminRole.SUPER_ADMIN)
+  listAdminTeam() {
+    return this.adminService.listAdminTeam();
+  }
+
+  @Post('team')
+  @HttpCode(HttpStatus.CREATED)
+  @AdminRoles(AdminRole.SUPER_ADMIN)
+  createAdminMember(@Body() dto: CreateAdminMemberDto, @CurrentAdmin() admin: CurrentAdminUser) {
+    return this.adminService.createAdminMember(dto, admin.id);
+  }
+
+  @Patch('team/:id/role')
+  @HttpCode(HttpStatus.OK)
+  @AdminRoles(AdminRole.SUPER_ADMIN)
+  updateAdminMemberRole(
+    @Param('id') id: string,
+    @Body() dto: UpdateAdminRoleDto,
+    @CurrentAdmin() admin: CurrentAdminUser,
+  ) {
+    return this.adminService.updateAdminMemberRole(id, dto.role, admin.id);
+  }
+
+  @Patch('team/:id/deactivate')
+  @HttpCode(HttpStatus.OK)
+  @AdminRoles(AdminRole.SUPER_ADMIN)
+  deactivateAdminMember(@Param('id') id: string, @CurrentAdmin() admin: CurrentAdminUser) {
+    return this.adminService.deactivateAdminMember(id, admin.id);
+  }
+
+  @Patch('team/:id/reactivate')
+  @HttpCode(HttpStatus.OK)
+  @AdminRoles(AdminRole.SUPER_ADMIN)
+  reactivateAdminMember(@Param('id') id: string, @CurrentAdmin() admin: CurrentAdminUser) {
+    return this.adminService.reactivateAdminMember(id, admin.id);
+  }
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
 
@@ -44,6 +105,12 @@ export class AdminController {
   @AdminRoles(AdminRole.SUPER_ADMIN)
   getDashboardOverview() {
     return this.adminService.getDashboardOverview();
+  }
+
+  @Get('dashboard/overview-complete')
+  @AdminRoles(AdminRole.SUPER_ADMIN)
+  getCompleteOverview() {
+    return this.adminService.getCompleteOverview();
   }
 
   // ── Usuários ──────────────────────────────────────────────────────────────
@@ -192,6 +259,12 @@ export class AdminController {
   // ── Auditoria ─────────────────────────────────────────────────────────────
 
   @Get('audit-logs')
+  @AdminRoles(
+    AdminRole.SUPER_ADMIN,
+    AdminRole.SUPPORT_DRIVER,
+    AdminRole.SUPPORT_INFLUENCER,
+    AdminRole.SUPPORT_DRIVER_INFLUENCER,
+  )
   getAuditLogs(
     @CurrentAdmin() admin: CurrentAdminUser,
     @Query('admin_id') adminId?: string,

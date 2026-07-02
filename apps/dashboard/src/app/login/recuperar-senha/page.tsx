@@ -78,7 +78,7 @@ export default function RecuperarSenhaPage() {
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
           <h2 className="text-lg font-semibold text-slate-800 mb-2">Recuperar senha</h2>
           <p className="text-sm text-slate-500 mb-6">
-            Informe o telefone cadastrado no app Rota Financeira. Enviaremos um código por SMS.
+            Informe o telefone cadastrado no app Motorista Rico. Enviaremos um código por SMS.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">

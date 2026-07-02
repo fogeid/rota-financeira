@@ -27,9 +27,10 @@ async function bootstrap(): Promise<void> {
   );
 
   // CORS — apenas origens autorizadas, nunca '*' — docs/05-SECURITY.md seção 5
-  const frontendUrl = config.get<string>('FRONTEND_URL');
+  const corsOrigin = config.get<string>('CORS_ORIGIN');
   app.enableCors({
-    origin: frontendUrl ? frontendUrl.split(',') : false,
+    origin: corsOrigin ? corsOrigin.split(',') : false,
+    credentials: true,
   });
 
   app.setGlobalPrefix('v1');
@@ -46,8 +47,8 @@ async function bootstrap(): Promise<void> {
   );
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Rota Financeira API')
-    .setDescription('API do Rota Financeira — gestão financeira para motoristas de aplicativo')
+    .setTitle('Motorista Rico API')
+    .setDescription('API do Motorista Rico — gestão financeira para motoristas de aplicativo')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

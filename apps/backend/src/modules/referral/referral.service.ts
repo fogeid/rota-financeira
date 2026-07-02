@@ -257,7 +257,7 @@ export class ReferralService {
     const result = {
       code: code!.code,
       is_active: code!.is_active,
-      link: `https://rotafinanceira.app/i/${code!.code}`,
+      link: `https://motoristarico.app/i/${code!.code}`,
       level: getReferralLevel(conversions),
       conversions,
       next_level_at: getNextLevelAt(conversions),
